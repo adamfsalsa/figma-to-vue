@@ -42,6 +42,10 @@ npm run test
 npm run build
 ```
 
+## Deployment Target
+
+The repo includes `vercel.json` for a Vite single-page deployment on Vercel. The intended portfolio flow is local UI prototype -> Git commit/review -> hosted one-page demo.
+
 ## Legal Note
 
 This is an independent portfolio study. It does not use Trek or Zoovu source code, private design files, proprietary assets, or production imagery. Any visual references are reinterpreted with local placeholders or royalty-free equivalents.

@@ -19,3 +19,4 @@ The generated brief becomes part of the reviewable work: Vue components, CSS tok
 ## 5. Git to Deployment
 
 The target deployment path is a one-page static build hosted on Vercel or an equivalent platform. A future milestone should add a deploy status panel and the production URL.
+The repository now includes a `vercel.json` target so the build settings are explicit.
