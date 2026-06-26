@@ -1,6 +1,6 @@
 # Figma to Vue AI Pipeline
 
-An AI-assisted portfolio case study that translates a Figma-style product finder reference into a production-minded Vue 3 + TypeScript component system.
+An AI-assisted portfolio case study that translates a Figma document, screenshot, or similar design reference into a production-minded Vue 3 + TypeScript webpage.
 
 The project is intentionally framed as a pipeline, not a clone. The goal is to demonstrate how design intake, token extraction, AI-assisted planning, accessible implementation, and automated validation can work together on a realistic ecommerce interaction.
 
