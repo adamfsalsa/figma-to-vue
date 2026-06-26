@@ -21,6 +21,12 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Automated validation with Vitest, Testing Library, and axe
 - Documentation that makes AI decisions reviewable instead of invisible
 
+## Status & Handoff
+
+For current state, what's done, how to enable the optional AI tier, and the open
+follow-ups, see **[docs/STATUS.md](docs/STATUS.md)** — the single entry point for
+picking this up.
+
 ## Pipeline
 
 1. Design intake captures the reference image or exported frame.

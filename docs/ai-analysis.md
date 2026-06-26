@@ -43,10 +43,11 @@ in by hand: it is the honest option until a vision-capable model is wired up.
 - **Tier 1 (always on):** the local extractor above, plus the existing
   human-guided `ReferenceAnalyzer` form. Works for every visitor, free,
   no key, no proxy.
-- **Tier 2 (optional, currently stubbed):** an "Enhance with AI" action
+- **Tier 2 (optional, dormant until configured):** an "Enhance with AI" action
   (`src/utils/aiAnalysis.ts`, wired into `src/App.vue`) that POSTs the
   reference image to `/api/analyze` and merges the response into
-  `referenceAnalysis` on success.
+  `referenceAnalysis` on success. The provider call is implemented (Haiku) but
+  returns `not_configured` until the env vars are set — see below.
 
 Tier 2 is designed to fail closed: any non-success response (`not_configured`,
 `rate_limited`, `provider_error`, a timeout, a network error) just leaves the
