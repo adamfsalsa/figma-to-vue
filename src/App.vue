@@ -117,8 +117,14 @@
           </p>
         </div>
         <div class="preview-actions">
+          <button type="button" @click="generateJsonPlan">
+            Generate JSON plan
+          </button>
           <button class="button-primary" type="button" @click="generatePagePreview">
             Generate preview
+          </button>
+          <button type="button" :disabled="!pagePlan" @click="copyJsonPlan">
+            Copy JSON
           </button>
           <button type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
             Copy HTML
@@ -127,6 +133,14 @@
       </div>
 
       <p class="copy-status" role="status">{{ previewStatus }}</p>
+
+      <section class="plan-layer" aria-labelledby="plan-title">
+        <div class="panel__title-row">
+          <h3 id="plan-title">4. JSON page plan</h3>
+          <p>Typed contract between the assistant and renderer</p>
+        </div>
+        <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
+      </section>
 
       <article
         v-if="generatedPage"
@@ -186,6 +200,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
+import type { PagePlan, VisualDensity } from './types/pagePlan';
+import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 
 interface DeliveryStep {
   index: string;
@@ -195,7 +211,7 @@ interface DeliveryStep {
 
 interface FormattingAnswers {
   pageType: string;
-  density: string;
+  density: VisualDensity;
   tone: string;
   notes: string;
 }
@@ -215,7 +231,7 @@ interface GeneratedPage {
   title: string;
 }
 
-const densityOptions = ['Comfortable', 'Compact', 'Editorial'];
+const densityOptions: VisualDensity[] = ['Comfortable', 'Compact', 'Editorial'];
 
 const formatting = reactive<FormattingAnswers>({
   pageType: 'Product finder',
@@ -246,6 +262,7 @@ const isDragging = ref(false);
 const referenceName = ref('No reference selected');
 const referencePreview = ref<string | null>(null);
 const briefCopyStatus = ref('');
+const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
 const previewStatus = ref('');
 const previewTitleRef = ref<HTMLHeadingElement | null>(null);
@@ -319,6 +336,21 @@ const generatedPreviewHtml = computed(() => {
 </html>`;
 });
 
+const generatedPlanJson = computed(() => {
+  if (!pagePlan.value) {
+    return JSON.stringify(
+      {
+        schemaVersion: 'figma-to-vue.page-plan.v1',
+        status: 'No JSON plan generated yet',
+      },
+      null,
+      2,
+    );
+  }
+
+  return serializePagePlan(pagePlan.value);
+});
+
 function handleFileInput(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -355,40 +387,46 @@ async function copyBrief() {
   briefCopyStatus.value = 'Brief copied.';
 }
 
+function generateJsonPlan() {
+  pagePlan.value = buildPagePlan({
+    density: formatting.density,
+    notes: formatting.notes,
+    pageType: formatting.pageType,
+    referenceName: referencePreview.value ? referenceName.value : null,
+    tone: formatting.tone,
+  });
+
+  previewStatus.value = 'Generated constrained JSON page plan.';
+}
+
 async function generatePagePreview() {
-  const notes = formatting.notes.trim();
-  const referenceLabel = referencePreview.value
-    ? referenceName.value
-    : 'the uploaded reference placeholder';
+  if (!pagePlan.value) {
+    generateJsonPlan();
+  }
 
-  generatedPage.value = {
-    densityKey: formatting.density.toLowerCase(),
-    kicker: `${formatting.pageType} concept`,
-    referenceName: referenceLabel,
-    referencePreview: referencePreview.value,
-    title: `${formatting.pageType} from design reference`,
-    summary: `A ${formatting.density.toLowerCase()} one-page ${formatting.pageType.toLowerCase()} shaped around a ${formatting.tone.toLowerCase()} direction.`,
-    sections: [
-      {
-        title: 'Design signals',
-        body: referencePreview.value
-          ? `Use ${referenceName.value} as the visual reference for hierarchy, rhythm, and imagery.`
-          : 'Use the formatting answers as the first design signal until a reference image is added.',
-      },
-      {
-        title: 'Implementation plan',
-        body: `Build semantic Vue components with ${formatting.density.toLowerCase()} spacing, CSS tokens, and a clear responsive layout.`,
-      },
-      {
-        title: 'Review notes',
-        body: notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
-      },
-    ],
-  };
+  if (!pagePlan.value) {
+    return;
+  }
 
-  previewStatus.value = 'Generated a static one-page preview from the current brief.';
+  generatedPage.value = pagePlanToGeneratedPage(pagePlan.value);
+  previewStatus.value = 'Rendered a static one-page preview from the JSON plan.';
   await nextTick();
   previewTitleRef.value?.focus();
+}
+
+async function copyJsonPlan() {
+  if (!pagePlan.value) {
+    previewStatus.value = 'Generate a JSON plan before copying it.';
+    return;
+  }
+
+  if (!navigator.clipboard) {
+    previewStatus.value = 'Clipboard is unavailable in this browser.';
+    return;
+  }
+
+  await navigator.clipboard.writeText(generatedPlanJson.value);
+  previewStatus.value = 'JSON page plan copied.';
 }
 
 async function copyPreviewHtml() {
@@ -404,6 +442,21 @@ async function copyPreviewHtml() {
 
   await navigator.clipboard.writeText(generatedPreviewHtml.value);
   previewStatus.value = 'Preview HTML copied.';
+}
+
+function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
+  return {
+    densityKey: plan.page.densityKey,
+    kicker: plan.page.kicker,
+    referenceName: plan.reference.name ?? 'the uploaded reference placeholder',
+    referencePreview: referencePreview.value,
+    title: plan.page.title,
+    summary: plan.page.summary,
+    sections: plan.sections.map((section) => ({
+      title: section.title,
+      body: section.body,
+    })),
+  };
 }
 
 function escapeHtml(value: string) {

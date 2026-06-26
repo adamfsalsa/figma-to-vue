@@ -335,6 +335,38 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.plan-layer {
+  margin: var(--space-4) 0 var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.plan-layer .panel__title-row {
+  align-items: baseline;
+}
+
+.plan-layer .panel__title-row p {
+  margin-bottom: 0;
+  color: var(--color-muted);
+  font-size: var(--fs-caption);
+}
+
+.plan-layer pre {
+  max-height: 360px;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-4);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .preview-lab {
   margin-bottom: var(--space-8);
   padding: var(--space-8);

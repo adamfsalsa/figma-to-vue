@@ -6,7 +6,8 @@ This milestone turns the intake brief into a deterministic one-page preview insi
 
 - The user can add a reference image or screenshot.
 - The user answers basic formatting questions.
-- The app generates a static one-page composition from the current brief.
+- The app generates a constrained JSON page plan from the current brief.
+- The app renders a static one-page composition from that plan.
 - The generated preview can be copied as starter HTML.
 
 ## Why Deterministic First
