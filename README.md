@@ -8,6 +8,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 
 - Figma-to-code planning for component boundaries, state, and design tokens
 - Drag-and-drop reference intake for screenshots or exported frames
+- Human-guided reference analyzer for visible design observations
 - Basic prompt support for formatting questions before code generation
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief
@@ -18,14 +19,15 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 
 ## Pipeline
 
-1. Design intake captures layout, copy, hierarchy, and interaction intent.
-2. Basic LLM formatting questions shape the implementation brief.
-3. A constrained JSON page plan captures the render contract.
-4. Token extraction converts observed colors, type, spacing, and layout values into CSS custom properties.
-5. A deterministic generator creates a static one-page preview from the plan.
-6. Vue implementation turns the plan into semantic components.
-7. Git records reviewed code, docs, tests, and pipeline decisions.
-8. Deployment publishes the final one-page build through Vercel or a similar static host.
+1. Design intake captures the reference image or exported frame.
+2. Human-guided analysis records visible layout and composition decisions.
+3. Basic formatting questions shape the implementation brief.
+4. A constrained JSON page plan captures the render contract.
+5. Token extraction converts observed colors, type, spacing, and layout values into CSS custom properties.
+6. A deterministic generator creates a static one-page preview from the plan.
+7. Vue implementation turns the plan into semantic components.
+8. Git records reviewed code, docs, tests, and pipeline decisions.
+9. Deployment publishes the final one-page build through Vercel or a similar static host.
 
 ## Tech Stack
 

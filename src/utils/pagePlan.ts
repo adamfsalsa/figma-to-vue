@@ -11,6 +11,7 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
       intent: 'Bridge intake answers to a reviewable one-page Vue rendering plan.',
     },
     reference: {
+      analysis: input.analysis,
       name: input.referenceName,
       provided: Boolean(input.referenceName),
     },
@@ -28,18 +29,18 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
         id: 'design-signals',
         title: 'Design signals',
         body: input.referenceName
-          ? `Use ${input.referenceName} as the visual reference for hierarchy, rhythm, and imagery.`
-          : 'Use the formatting answers as the first design signal until a reference image is added.',
+          ? `Use ${input.referenceName} as a ${input.analysis.mediaEmphasis.toLowerCase()} reference with a ${input.analysis.heroComposition.toLowerCase()} composition.`
+          : `Use the analyzer observations as the first design signal: ${input.analysis.heroComposition.toLowerCase()}, ${input.analysis.mediaEmphasis.toLowerCase()} media.`,
       },
       {
         id: 'implementation-plan',
         title: 'Implementation plan',
-        body: `Build semantic Vue components with ${densityKey} spacing, CSS tokens, and a clear responsive layout.`,
+        body: `Build a ${input.analysis.layoutPattern.toLowerCase()} with ${densityKey} spacing, ${input.analysis.sectionCount} content sections, CSS tokens, and semantic Vue components.`,
       },
       {
         id: 'review-notes',
-        title: 'Review notes',
-        body: notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
+        title: `${input.analysis.ctaStyle} review notes`,
+        body: input.analysis.visualNotes || notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
       },
     ],
     accessibility: {
@@ -51,9 +52,9 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
       ],
     },
     tokens: {
+      accentRole: input.analysis.ctaStyle === 'None visible' ? 'supporting-action' : 'primary-action',
       layoutDensity: densityKey,
       spacing: densityKey === 'compact' ? 'tight' : densityKey === 'editorial' ? 'generous' : 'balanced',
-      accentRole: 'primary-action',
     },
   };
 }

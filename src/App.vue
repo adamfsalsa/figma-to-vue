@@ -105,6 +105,12 @@
       </div>
     </section>
 
+    <ReferenceAnalyzer
+      v-model="referenceAnalysis"
+      :reference-name="referencePreview ? referenceName : null"
+      :reference-preview="referencePreview"
+    />
+
     <section class="preview-lab" aria-labelledby="preview-title">
       <div class="preview-lab__intro">
         <div>
@@ -200,7 +206,10 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
+import ReferenceAnalyzer from './components/ReferenceAnalyzer.vue';
 import type { PagePlan, VisualDensity } from './types/pagePlan';
+import type { ReferenceAnalysis } from './types/referenceAnalysis';
+import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 
 interface DeliveryStep {
@@ -261,6 +270,7 @@ const deliverySteps: DeliveryStep[] = [
 const isDragging = ref(false);
 const referenceName = ref('No reference selected');
 const referencePreview = ref<string | null>(null);
+const referenceAnalysis = ref<ReferenceAnalysis>(createDefaultReferenceAnalysis());
 const briefCopyStatus = ref('');
 const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
@@ -280,6 +290,14 @@ const generatedBrief = computed(() => {
     `Page type: ${formatting.pageType}`,
     `Visual density: ${formatting.density}`,
     `UI tone: ${formatting.tone}`,
+    '',
+    'Reference analysis:',
+    `- Hero composition: ${referenceAnalysis.value.heroComposition}`,
+    `- Media emphasis: ${referenceAnalysis.value.mediaEmphasis}`,
+    `- Layout pattern: ${referenceAnalysis.value.layoutPattern}`,
+    `- Content sections: ${referenceAnalysis.value.sectionCount}`,
+    `- CTA style: ${referenceAnalysis.value.ctaStyle}`,
+    `- Visual notes: ${referenceAnalysis.value.visualNotes.trim() || 'None yet.'}`,
     '',
     'Formatting notes:',
     notes,
@@ -389,6 +407,7 @@ async function copyBrief() {
 
 function generateJsonPlan() {
   pagePlan.value = buildPagePlan({
+    analysis: referenceAnalysis.value,
     density: formatting.density,
     notes: formatting.notes,
     pageType: formatting.pageType,

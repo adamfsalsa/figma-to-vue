@@ -1,8 +1,16 @@
 import { buildPagePlan, serializePagePlan } from '../src/utils/pagePlan';
+import { createDefaultReferenceAnalysis } from '../src/types/referenceAnalysis';
 
 describe('page plan layer', () => {
   it('builds a constrained deterministic page plan', () => {
     const plan = buildPagePlan({
+      analysis: {
+        ...createDefaultReferenceAnalysis(),
+        ctaStyle: 'Text-link',
+        layoutPattern: 'Single hero',
+        mediaEmphasis: 'Primary',
+        sectionCount: 2,
+      },
       density: 'Compact',
       notes: 'Keep the hero short.',
       pageType: 'Landing page',
@@ -11,7 +19,9 @@ describe('page plan layer', () => {
     });
 
     expect(plan.schemaVersion).toBe('figma-to-vue.page-plan.v1');
-    expect(plan.reference).toEqual({ name: 'landing-reference.png', provided: true });
+    expect(plan.reference.name).toBe('landing-reference.png');
+    expect(plan.reference.provided).toBe(true);
+    expect(plan.reference.analysis.mediaEmphasis).toBe('Primary');
     expect(plan.page.densityKey).toBe('compact');
     expect(plan.sections.map((section) => section.id)).toEqual([
       'design-signals',
@@ -19,10 +29,12 @@ describe('page plan layer', () => {
       'review-notes',
     ]);
     expect(plan.tokens.spacing).toBe('tight');
+    expect(plan.tokens.accentRole).toBe('primary-action');
   });
 
   it('serializes page plans as readable JSON', () => {
     const plan = buildPagePlan({
+      analysis: createDefaultReferenceAnalysis(),
       density: 'Comfortable',
       notes: '',
       pageType: 'Product finder',

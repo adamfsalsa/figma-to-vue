@@ -9,6 +9,7 @@ describe('App pipeline console', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Figma to Vue pipeline' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Reference intake' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: '2. Formatting assistant' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Reference analyzer' })).toBeInTheDocument();
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent('Pipeline gates:');
     expect(screen.getByLabelText('Generated JSON page plan')).toHaveTextContent(
       'No JSON plan generated yet',
@@ -45,7 +46,7 @@ describe('App pipeline console', () => {
 
     await userEvent.upload(input, file);
 
-    expect(await screen.findByText('finder-reference.png')).toBeInTheDocument();
+    expect(await screen.findAllByText('finder-reference.png')).toHaveLength(2);
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent(
       'Reference: finder-reference.png',
     );
@@ -57,6 +58,13 @@ describe('App pipeline console', () => {
 
     await user.selectOptions(screen.getByLabelText('What are we building?'), 'Dashboard view');
     await user.click(screen.getByRole('radio', { name: 'Editorial' }));
+    await user.selectOptions(screen.getByLabelText('Hero composition'), 'Centered hero');
+    await user.selectOptions(screen.getByLabelText('Media emphasis'), 'Primary');
+    await user.selectOptions(screen.getByLabelText('Layout pattern'), 'Dashboard grid');
+    await user.clear(screen.getByLabelText('Expected content sections'));
+    await user.type(screen.getByLabelText('Expected content sections'), '5');
+    await user.selectOptions(screen.getByLabelText('CTA style'), 'Text-link');
+    await user.type(screen.getByLabelText('Visual translation notes'), 'Use a strong visual hierarchy.');
     await user.type(screen.getByLabelText('Formatting notes'), 'Keep charts simple and readable.');
     await user.click(screen.getByRole('button', { name: 'Generate JSON plan' }));
 
@@ -67,7 +75,15 @@ describe('App pipeline console', () => {
     expect(plan.source.generator).toBe('local-deterministic');
     expect(plan.page.type).toBe('Dashboard view');
     expect(plan.page.density).toBe('Editorial');
+    expect(plan.reference.analysis.heroComposition).toBe('Centered hero');
+    expect(plan.reference.analysis.mediaEmphasis).toBe('Primary');
+    expect(plan.reference.analysis.layoutPattern).toBe('Dashboard grid');
+    expect(plan.reference.analysis.sectionCount).toBe(5);
+    expect(plan.reference.analysis.ctaStyle).toBe('Text-link');
     expect(plan.sections).toHaveLength(3);
+    expect(plan.sections[1].body).toContain('dashboard grid');
+    expect(plan.sections[1].body).toContain('5 content sections');
+    expect(plan.sections[2].body).toBe('Use a strong visual hierarchy.');
     expect(plan.accessibility.notes).toContain('Use a single h1 for the generated page.');
   });
 

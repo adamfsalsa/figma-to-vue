@@ -24,7 +24,7 @@ The local deterministic generator returns:
 - `accessibility`
 - `tokens`
 
-The Vue preview renders from this plan instead of directly from free-form prompt text.
+The `reference` block includes the human-guided analyzer observations, so the Vue preview renders from structured interpretation rather than directly from free-form prompt text.
 
 ## Future LLM Integration
 

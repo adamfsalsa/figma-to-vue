@@ -1,6 +1,9 @@
+import type { ReferenceAnalysis } from './referenceAnalysis';
+
 export type VisualDensity = 'Comfortable' | 'Compact' | 'Editorial';
 
 export interface PagePlanInput {
+  analysis: ReferenceAnalysis;
   density: VisualDensity;
   notes: string;
   pageType: string;
@@ -29,6 +32,7 @@ export interface PagePlan {
     type: string;
   };
   reference: {
+    analysis: ReferenceAnalysis;
     name: string | null;
     provided: boolean;
   };
