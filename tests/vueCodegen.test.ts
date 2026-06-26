@@ -3,6 +3,8 @@ import { buildPagePlan } from '../src/utils/pagePlan';
 import { createDefaultReferenceAnalysis } from '../src/types/referenceAnalysis';
 import type { VisualTokens } from '../src/types/visualTokens';
 
+import type { LayoutPattern } from '../src/types/referenceAnalysis';
+
 function planWith(visualTokens?: VisualTokens) {
   return buildPagePlan({
     analysis: createDefaultReferenceAnalysis(),
@@ -12,6 +14,17 @@ function planWith(visualTokens?: VisualTokens) {
     referenceName: 'reference.png',
     tone: 'Calm',
     visualTokens,
+  });
+}
+
+function planForLayout(layoutPattern: LayoutPattern) {
+  return buildPagePlan({
+    analysis: { ...createDefaultReferenceAnalysis(), layoutPattern },
+    density: 'Comfortable',
+    notes: '',
+    pageType: 'Landing page',
+    referenceName: 'reference.png',
+    tone: 'Calm',
   });
 }
 
@@ -60,6 +73,37 @@ describe('generateVueSfc', () => {
 
     expect(sfc).not.toContain('--token-accent:');
     expect(sfc).toContain('var(--token-accent,');
+  });
+
+  it('chooses a distinct root modifier and container per layout pattern', () => {
+    const cases: Array<[LayoutPattern, string, string]> = [
+      ['Single hero', 'generated-page--single-hero', 'generated-page__detail'],
+      ['Hero plus feature cards', 'generated-page--hero-cards', 'generated-page__sections'],
+      ['Dashboard grid', 'generated-page--dashboard-grid', 'generated-page__grid'],
+      ['Product finder flow', 'generated-page--finder-flow', 'generated-page__options'],
+    ];
+
+    for (const [pattern, modifier, container] of cases) {
+      const sfc = generateVueSfc(planForLayout(pattern));
+      expect(sfc).toContain(modifier);
+      expect(sfc).toContain(container);
+    }
+  });
+
+  it('keeps the script block and section v-for invariant across layouts', () => {
+    const patterns: LayoutPattern[] = [
+      'Single hero',
+      'Hero plus feature cards',
+      'Dashboard grid',
+      'Product finder flow',
+    ];
+
+    for (const pattern of patterns) {
+      const sfc = generateVueSfc(planForLayout(pattern));
+      expect(sfc.match(/<h1>/g)).toHaveLength(1);
+      expect(sfc).toContain('v-for="section in sections"');
+      expect(sfc).toContain('<h2>{{ section.title }}</h2>');
+    }
   });
 
   it('escapes quotes and newlines in content so the TS literal cannot break out', () => {

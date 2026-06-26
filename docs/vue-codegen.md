@@ -18,6 +18,20 @@ complete `.vue` file as a string:
   `--token-accent` / `--token-surface-soft` custom properties, with hardcoded
   fallbacks when no image has been analyzed.
 
+The component's *shape* is chosen from the analyzer's observed `layoutPattern`,
+so the structure matches the design rather than being one fixed layout:
+
+| `layoutPattern` | Root modifier | Section shape |
+| --- | --- | --- |
+| Single hero | `generated-page--single-hero` | single narrow column under the hero |
+| Hero plus feature cards | `generated-page--hero-cards` | responsive auto-fit card grid |
+| Dashboard grid | `generated-page--dashboard-grid` | dense tile grid |
+| Product finder flow | `generated-page--finder-flow` | centered row of option cards |
+
+Across every variant the script block, the single `<h1>`, and the `v-for` over
+typed `sections` rendering each as an `<h2>` stay invariant — only the
+container markup and scoped styles change.
+
 The result is a component a developer can drop straight into a Vue project and
 edit — not an HTML string, and not data rendered only inside this app.
 
@@ -48,18 +62,16 @@ with it.
 
 ## Not Implemented Yet
 
-- The generated component is a single hero + section-cards layout. It does not
-  yet vary its structure by `layoutPattern` (e.g. a dashboard grid vs. a
-  product-finder flow) — every plan currently yields the same component shape
-  with different content and colors.
 - No multi-component output (the whole page is one SFC; no extracted child
-  components).
+  components for repeated structures).
 - No download-as-file action; copy-to-clipboard only.
+- Layout variants differ in container shape and styling, but not yet in the
+  per-section markup (e.g. finder-flow option cards are not yet real
+  `<label><input type="radio">` controls like `RideFinder.vue`).
 
 ## Next Step
 
-Branch the template by `plan.reference.analysis.layoutPattern` so the SFC shape
-matches the observed design (grid vs. hero-plus-cards vs. finder flow), and
-consider emitting child components for repeated structures. The generator is
-already the single place that owns SFC output, so these are additive changes
-to one pure function.
+Consider emitting child components for repeated structures, and deepening the
+`finder-flow` variant toward the accessible native-radio pattern used in
+`src/components/RideFinder.vue`. The generator is the single place that owns
+SFC output, so these stay additive changes to one pure function.
