@@ -236,7 +236,7 @@ import type { ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
 import type { VisualTokens } from './types/visualTokens';
 import { createDefaultVisualTokens } from './types/visualTokens';
-import { fileToDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
+import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
 import { extractVisualTokensFromImage } from './utils/colorExtraction';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 
@@ -462,7 +462,7 @@ async function enhanceWithAi() {
   aiAnalysisStatus.value = 'Asking the AI analyzer…';
 
   try {
-    const imageDataUrl = await fileToDataUrl(referenceFile.value);
+    const imageDataUrl = await fileToDownscaledDataUrl(referenceFile.value);
     const result = await requestAiAnalysis(imageDataUrl);
 
     if (result.ok) {

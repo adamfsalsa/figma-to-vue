@@ -1,34 +1,41 @@
 /**
- * Vercel serverless function: AI-assisted reference analysis (stubbed).
+ * Vercel serverless function: AI-assisted reference analysis.
  *
- * STATUS: scaffolding only. The actual vision-model call is NOT implemented —
- * see `callVisionProvider()` below for exactly what the next increment needs
- * to fill in. Every other piece (request validation, rate limiting, error
- * shape) is real and intended to ship as-is once a provider is wired up.
+ * This is the optional Tier 2 of the hybrid analyzer. Tier 1 — real, free,
+ * no-key color/luminance extraction — runs entirely in the browser
+ * (src/utils/colorExtraction.ts) and always works. This endpoint adds the
+ * semantic fields pixel math cannot reach (hero composition, layout pattern,
+ * CTA style) by asking a vision-capable model. See docs/ai-analysis.md.
  *
- * WHY THIS EXISTS: the frontend already has a free, zero-key, no-LLM analysis
- * path (see src/utils/colorExtraction.ts — real palette/luminance extraction
- * that runs entirely in the browser). This endpoint is the *optional* second
- * tier: an "Enhance with AI" action that asks a vision-capable LLM to fill in
- * the semantic fields color math cannot reach (hero composition, layout
- * pattern, CTA style — see docs/ai-analysis.md for the full breakdown of
- * what classic CV can and cannot do here).
+ * KEY SAFETY: the model API key lives only as a server-side environment
+ * variable (ANTHROPIC_API_KEY) and never reaches the browser — that is the
+ * entire reason this proxy exists.
  *
- * Until a provider is wired up, every request resolves with `notConfigured`
- * below, and the frontend is expected to keep using the local analyzer. This
- * is intentional — it means this file can ship and be exercised end-to-end
- * (rate limiting, error handling, frontend fallback) before any API key,
- * billing decision, or extra dependency is introduced.
+ * BUDGET SAFETY: this endpoint is reachable by anyone with the deployed link,
+ * so it refuses to call the (billable) model unless BOTH are configured:
+ *   1. ANTHROPIC_API_KEY                          — the provider key
+ *   2. UPSTASH_REDIS_REST_URL + _TOKEN            — the durable rate-limit store
+ * If the rate-limit store is missing it responds `not_configured` rather than
+ * exposing an uncapped billable endpoint. The true spend ceiling is still the
+ * prepaid balance on the API account (load $5, auto-reload OFF) — the rate
+ * limiter only stops that balance being burned in a single burst. See
+ * docs/ai-analysis.md → "Guaranteeing you never exceed $5".
  *
- * NOT using `@vercel/node`'s `VercelRequest`/`VercelResponse` types here —
- * that package is not currently a project dependency (see CLAUDE.md: "don't
- * add dependencies beyond the stack without flagging"). The minimal local
- * types below cover the subset of the Node request/response shape Vercel
- * actually invokes this function with. Swapping to the real types later is a
- * one-line, zero-behavior-change upgrade once `@vercel/node` is approved as a
- * devDependency.
+ * NOT using `@vercel/node`'s request/response types — that package is not a
+ * project dependency. The minimal local types below cover the subset Vercel
+ * invokes this function with; swapping to the real types later is a zero-
+ * behavior-change upgrade once `@vercel/node` is approved as a devDependency.
  */
-import type { ReferenceAnalysis } from '../src/types/referenceAnalysis';
+import Anthropic from '@anthropic-ai/sdk';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import type {
+  CtaStyle,
+  HeroComposition,
+  LayoutPattern,
+  MediaEmphasis,
+  ReferenceAnalysis,
+} from '../src/types/referenceAnalysis';
 
 interface ApiRequest {
   method?: string;
@@ -42,7 +49,7 @@ interface ApiResponse {
 }
 
 interface AnalyzeRequestBody {
-  /** Data URL (e.g. "data:image/png;base64,...") of the uploaded reference. */
+  /** Data URL (e.g. "data:image/png;base64,...") of the (downscaled) reference. */
   image?: unknown;
 }
 
@@ -58,55 +65,67 @@ type AnalyzeErrorResponse = {
 };
 
 // ---------------------------------------------------------------------------
-// Rate limiting (scaffold — NOT durable across instances; see warning below)
+// Allowed values — must stay in sync with src/types/referenceAnalysis.ts.
+// The model output is validated against these; anything off-list is dropped.
 // ---------------------------------------------------------------------------
 
-/**
- * ⚠️ KNOWN LIMITATION, READ BEFORE RELYING ON THIS IN PRODUCTION:
- *
- * Vercel serverless functions are stateless and may run on many concurrent
- * instances, each with its own copy of this module-level Map. This in-memory
- * limiter only bounds traffic *within a single warm instance* — it does NOT
- * give you a real global or per-IP cap across the deployment. It's enough to
- * (a) stop a single runaway client loop in dev/preview, and (b) prove the
- * request/response contract the frontend already codes against.
- *
- * For a real cap once a provider is wired up, replace this with a shared
- * store — Upstash Redis (`@upstash/ratelimit` + `@upstash/redis`) or Vercel
- * KV are the standard pairing for this exact use case. That's a new
- * dependency, so it should be a deliberate, flagged decision — not bundled
- * silently into the provider integration. See docs/ai-analysis.md.
- */
-const PER_IP_LIMIT = 10;
-const PER_IP_WINDOW_MS = 60_000;
-const GLOBAL_DAILY_LIMIT = 500;
-const GLOBAL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CTA_STYLES: readonly CtaStyle[] = ['Button-led', 'Text-link', 'Form-first', 'None visible'];
+const HERO_COMPOSITIONS: readonly HeroComposition[] = [
+  'Text left, media right',
+  'Media left, text right',
+  'Centered hero',
+  'Full-bleed media',
+];
+const LAYOUT_PATTERNS: readonly LayoutPattern[] = [
+  'Single hero',
+  'Hero plus feature cards',
+  'Dashboard grid',
+  'Product finder flow',
+];
+const MEDIA_EMPHASES: readonly MediaEmphasis[] = ['Decorative', 'Supporting', 'Primary', 'Immersive'];
 
-const ipRequestLog = new Map<string, number[]>();
-let globalRequestLog: number[] = [];
+// ---------------------------------------------------------------------------
+// Durable rate limiting (Upstash Redis — shared across all serverless instances)
+// ---------------------------------------------------------------------------
 
-function pruneAndCount(timestamps: number[], windowMs: number, now: number): number[] {
-  return timestamps.filter((timestamp) => now - timestamp < windowMs);
+const PER_IP_LIMIT = 10; // requests per minute, per client IP
+const GLOBAL_DAILY_LIMIT = 500; // requests per day, across the whole deployment
+
+interface Limiters {
+  ip: Ratelimit;
+  global: Ratelimit;
 }
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
+let cachedLimiters: Limiters | null = null;
 
-  globalRequestLog = pruneAndCount(globalRequestLog, GLOBAL_WINDOW_MS, now);
-  if (globalRequestLog.length >= GLOBAL_DAILY_LIMIT) {
-    return true;
+/**
+ * Returns the Upstash-backed limiters, or null if the store is not configured.
+ * Null is treated as "refuse to serve the billable endpoint" upstream — we do
+ * not silently fall back to an in-memory limiter, because that would not be a
+ * real cap across instances.
+ */
+function getLimiters(): Limiters | null {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null;
   }
 
-  const existing = pruneAndCount(ipRequestLog.get(ip) ?? [], PER_IP_WINDOW_MS, now);
-  if (existing.length >= PER_IP_LIMIT) {
-    ipRequestLog.set(ip, existing);
-    return true;
+  if (!cachedLimiters) {
+    const redis = Redis.fromEnv();
+    cachedLimiters = {
+      ip: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(PER_IP_LIMIT, '60 s'),
+        prefix: 'figma2vue:ip',
+      }),
+      global: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(GLOBAL_DAILY_LIMIT, '86400 s'),
+        prefix: 'figma2vue:global',
+      }),
+    };
   }
 
-  existing.push(now);
-  globalRequestLog.push(now);
-  ipRequestLog.set(ip, existing);
-  return false;
+  return cachedLimiters;
 }
 
 function resolveClientIp(req: ApiRequest): string {
@@ -116,31 +135,112 @@ function resolveClientIp(req: ApiRequest): string {
 }
 
 // ---------------------------------------------------------------------------
-// Provider call — NOT IMPLEMENTED. This is the one piece the next increment adds.
+// Provider call — claude-haiku-4-5 vision → validated Partial<ReferenceAnalysis>
 // ---------------------------------------------------------------------------
 
-/**
- * Fill this in once a provider + API key decision is made. It should:
- *
- * 1. Take the image data URL and ask a vision-capable model to return JSON
- *    matching (a subset of) `ReferenceAnalysis` from
- *    src/types/referenceAnalysis.ts — heroComposition, mediaEmphasis,
- *    layoutPattern, sectionCount, ctaStyle, visualNotes.
- * 2. Use structured output / a JSON schema response format so the result is
- *    guaranteed parseable — do not free-text parse a model's prose.
- * 3. Read the API key from an environment variable (e.g. `ANTHROPIC_API_KEY`
- *    or `GEMINI_API_KEY`), set in the Vercel project's environment settings
- *    — never hardcoded, never sent to the client.
- * 4. Use a small/cheap model — this is a simple classification task, not a
- *    reasoning task (e.g. Claude Haiku, Gemini Flash, or gpt-4o-mini).
- * 5. Apply a short request timeout (a few seconds) so a slow provider call
- *    can't hold the serverless function open indefinitely.
- *
- * See docs/ai-analysis.md for the full provider comparison and the prepaid
- * spend-cap recommendation that should accompany turning this on.
- */
-async function callVisionProvider(_imageDataUrl: string): Promise<Partial<ReferenceAnalysis>> {
-  throw new Error('AI_PROVIDER_NOT_CONFIGURED');
+const SUPPORTED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+const ANALYSIS_SYSTEM_PROMPT = [
+  'You analyze a single design reference image (a screenshot or exported frame)',
+  'and return structured observations about its layout. Respond with a JSON',
+  'object ONLY — no prose, no markdown fences. Use exactly these keys and pick',
+  'values only from the allowed lists:',
+  '',
+  `- "heroComposition": one of ${JSON.stringify(HERO_COMPOSITIONS)}`,
+  `- "mediaEmphasis": one of ${JSON.stringify(MEDIA_EMPHASES)}`,
+  `- "layoutPattern": one of ${JSON.stringify(LAYOUT_PATTERNS)}`,
+  '- "sectionCount": an integer from 1 to 6 (distinct content sections you see)',
+  `- "ctaStyle": one of ${JSON.stringify(CTA_STYLES)}`,
+  '- "visualNotes": one short sentence of plain-text translation guidance',
+].join('\n');
+
+function parseImageDataUrl(dataUrl: string): { mediaType: string; data: string } | null {
+  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/s.exec(dataUrl);
+  if (!match) {
+    return null;
+  }
+  return { mediaType: match[1], data: match[2] };
+}
+
+function sanitizeAnalysis(raw: unknown): Partial<ReferenceAnalysis> {
+  if (typeof raw !== 'object' || raw === null) {
+    return {};
+  }
+
+  const candidate = raw as Record<string, unknown>;
+  const result: Partial<ReferenceAnalysis> = {};
+
+  if (typeof candidate.heroComposition === 'string' && HERO_COMPOSITIONS.includes(candidate.heroComposition as HeroComposition)) {
+    result.heroComposition = candidate.heroComposition as HeroComposition;
+  }
+  if (typeof candidate.mediaEmphasis === 'string' && MEDIA_EMPHASES.includes(candidate.mediaEmphasis as MediaEmphasis)) {
+    result.mediaEmphasis = candidate.mediaEmphasis as MediaEmphasis;
+  }
+  if (typeof candidate.layoutPattern === 'string' && LAYOUT_PATTERNS.includes(candidate.layoutPattern as LayoutPattern)) {
+    result.layoutPattern = candidate.layoutPattern as LayoutPattern;
+  }
+  if (typeof candidate.ctaStyle === 'string' && CTA_STYLES.includes(candidate.ctaStyle as CtaStyle)) {
+    result.ctaStyle = candidate.ctaStyle as CtaStyle;
+  }
+  if (typeof candidate.sectionCount === 'number' && Number.isFinite(candidate.sectionCount)) {
+    result.sectionCount = Math.min(6, Math.max(1, Math.round(candidate.sectionCount)));
+  }
+  if (typeof candidate.visualNotes === 'string') {
+    result.visualNotes = candidate.visualNotes.trim().slice(0, 400);
+  }
+
+  return result;
+}
+
+function extractJsonText(text: string): unknown {
+  const trimmed = text.trim();
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) {
+    return null;
+  }
+  try {
+    return JSON.parse(trimmed.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+async function callVisionProvider(imageDataUrl: string): Promise<Partial<ReferenceAnalysis>> {
+  const parsed = parseImageDataUrl(imageDataUrl);
+  if (!parsed || !SUPPORTED_MEDIA_TYPES.has(parsed.mediaType)) {
+    throw new Error('UNSUPPORTED_IMAGE');
+  }
+
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 512,
+    system: ANALYSIS_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: parsed.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+              data: parsed.data,
+            },
+          },
+          { type: 'text', text: 'Analyze this reference image and return the JSON described in the system prompt.' },
+        ],
+      },
+    ],
+  });
+
+  const textBlock = response.content.find((block): block is Anthropic.TextBlock => block.type === 'text');
+  if (!textBlock) {
+    return {};
+  }
+
+  return sanitizeAnalysis(extractJsonText(textBlock.text));
 }
 
 // ---------------------------------------------------------------------------
@@ -172,12 +272,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const clientIp = resolveClientIp(req);
-  if (isRateLimited(clientIp)) {
-    respond(res, 429, {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    respond(res, 501, {
       ok: false,
-      reason: 'rate_limited',
-      message: 'Too many AI analysis requests right now. Falling back to local analysis is recommended.',
+      reason: 'not_configured',
+      message: 'AI analysis is not configured (no provider key). Use the local (free, no-LLM) analyzer instead.',
+    });
+    return;
+  }
+
+  const limiters = getLimiters();
+  if (!limiters) {
+    respond(res, 501, {
+      ok: false,
+      reason: 'not_configured',
+      message:
+        'AI analysis is disabled because no durable rate-limit store is configured. Refusing to expose a billable endpoint without a cap.',
     });
     return;
   }
@@ -193,15 +303,40 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   try {
+    const [globalResult, ipResult] = await Promise.all([
+      limiters.global.limit('global'),
+      limiters.ip.limit(resolveClientIp(req)),
+    ]);
+
+    if (!globalResult.success || !ipResult.success) {
+      respond(res, 429, {
+        ok: false,
+        reason: 'rate_limited',
+        message: 'Too many AI analysis requests right now. The free local analyzer is still available.',
+      });
+      return;
+    }
+  } catch {
+    // If the rate-limit store itself is unreachable, fail closed: do not call
+    // the billable model without a working cap.
+    respond(res, 503, {
+      ok: false,
+      reason: 'rate_limited',
+      message: 'Rate-limit store is unavailable. Skipping AI analysis; the free local analyzer is still available.',
+    });
+    return;
+  }
+
+  try {
     const analysis = await callVisionProvider(parsedBody.image);
     const success: AnalyzeSuccessResponse = { ok: true, analysis };
     respond(res, 200, success);
   } catch (error) {
-    if (error instanceof Error && error.message === 'AI_PROVIDER_NOT_CONFIGURED') {
-      respond(res, 501, {
+    if (error instanceof Error && error.message === 'UNSUPPORTED_IMAGE') {
+      respond(res, 400, {
         ok: false,
-        reason: 'not_configured',
-        message: 'AI analysis is not configured yet. Use the local (free, no-LLM) analyzer instead.',
+        reason: 'invalid_request',
+        message: 'Unsupported image format. Expected PNG, JPEG, GIF, or WebP.',
       });
       return;
     }

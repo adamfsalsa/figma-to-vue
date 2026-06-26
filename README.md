@@ -10,7 +10,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Drag-and-drop reference intake for screenshots or exported frames
 - Human-guided reference analyzer for visible design observations
 - Local, no-LLM color/token extraction from the uploaded reference image
-- Optional "Enhance with AI" tier behind a key-safe Vercel proxy (provider call stubbed for now)
+- Optional "Enhance with AI" tier: a key-safe Vercel proxy that calls claude-haiku-4-5, gated behind durable rate limiting and a prepaid spend cap (dormant until configured)
 - Basic prompt support for formatting questions before code generation
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief

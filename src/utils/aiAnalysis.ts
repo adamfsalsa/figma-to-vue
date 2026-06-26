@@ -63,3 +63,45 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+const MAX_UPLOAD_EDGE = 768;
+
+/**
+ * Downscales the reference image to a small PNG data URL before it is sent to
+ * /api/analyze. This bounds the per-call input-token cost (the model bills by
+ * image size) so spend stays predictable, and it rasterizes SVG/other formats
+ * to PNG, which the vision provider accepts. Falls back to the raw data URL if
+ * canvas is unavailable or decoding fails — the proxy still validates format
+ * and size on its side.
+ */
+export async function fileToDownscaledDataUrl(file: File, maxEdge = MAX_UPLOAD_EDGE): Promise<string> {
+  try {
+    const objectUrl = URL.createObjectURL(file);
+    const image = await loadImage(objectUrl);
+    URL.revokeObjectURL(objectUrl);
+
+    const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return fileToDataUrl(file);
+    }
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return fileToDataUrl(file);
+  }
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Failed to decode image.'));
+    image.src = src;
+  });
+}
