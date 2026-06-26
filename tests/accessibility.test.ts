@@ -1,10 +1,10 @@
 import { render } from '@testing-library/vue';
 import { axe } from 'vitest-axe';
-import RideFinder from '../src/components/RideFinder.vue';
+import App from '../src/App.vue';
 
 describe('accessibility', () => {
   it('has no automated axe violations', async () => {
-    const { container } = render(RideFinder);
+    const { container } = render(App);
     const results = await axe(container, {
       rules: {
         'color-contrast': { enabled: false },

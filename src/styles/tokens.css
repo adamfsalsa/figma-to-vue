@@ -2,10 +2,15 @@
   --color-heading: #000000;
   --color-text: #1a1a1a;
   --color-muted: #5f6368;
+  --color-soft-text: #3f474d;
   --color-surface: #ffffff;
+  --color-surface-alt: #f3f7f5;
   --color-page: #f7f7f4;
   --color-border: #d7d9dc;
   --color-focus: #1f6feb;
+  --color-accent: #2f7d62;
+  --color-accent-soft: #dcece5;
+  --color-warning-soft: #fff1c7;
   --color-progress: #4a90e2;
   --color-progress-track: #e4ecf7;
 
@@ -20,6 +25,8 @@
 
   --container-max: 1270px;
   --image-size: 163px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
