@@ -15,6 +15,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief
 - One-shot Vue 3 single-file component generated deterministically from the page plan
+- One-click full-screen live preview with an interactive CTA, so non-coders can see and use the result in real time
 - Vue 3 single-file components with strict TypeScript
 - Accessibility-first implementation with native form controls and focus management
 - Automated validation with Vitest, Testing Library, and axe

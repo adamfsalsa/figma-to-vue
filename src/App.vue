@@ -153,6 +153,9 @@
           <button class="button-primary" type="button" @click="generatePagePreview">
             Generate preview
           </button>
+          <button class="button-primary" type="button" @click="openLivePreview">
+            ▶ Preview page
+          </button>
           <button type="button" :disabled="!pagePlan" @click="copyJsonPlan">
             Copy JSON
           </button>
@@ -183,36 +186,7 @@
         <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
       </section>
 
-      <article
-        v-if="generatedPage"
-        class="generated-page"
-        :class="`generated-page--${generatedPage.densityKey}`"
-        :style="generatedPageStyle"
-        aria-label="Generated one-page website preview"
-      >
-        <header class="generated-page__hero">
-          <div>
-            <p class="generated-page__kicker">{{ generatedPage.kicker }}</p>
-            <h3>{{ generatedPage.title }}</h3>
-            <p>{{ generatedPage.summary }}</p>
-            <a href="#generated-page-plan">View plan</a>
-          </div>
-          <figure v-if="generatedPage.referencePreview">
-            <img
-              :src="generatedPage.referencePreview"
-              :alt="`Reference used for ${generatedPage.title}`"
-            />
-            <figcaption>{{ generatedPage.referenceName }}</figcaption>
-          </figure>
-        </header>
-
-        <section id="generated-page-plan" class="generated-page__sections">
-          <div v-for="section in generatedPage.sections" :key="section.title">
-            <h4>{{ section.title }}</h4>
-            <p>{{ section.body }}</p>
-          </div>
-        </section>
-      </article>
+      <GeneratedPagePreview v-if="generatedPage" :page="generatedPage" />
 
       <div v-else class="preview-placeholder">
         <h3>No page generated yet</h3>
@@ -237,14 +211,34 @@
         </li>
       </ol>
     </section>
+
+    <div
+      v-if="isPreviewOpen && generatedPage"
+      class="live-preview"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Live preview of the generated page"
+    >
+      <div class="live-preview__bar">
+        <p class="live-preview__hint">Live preview — scroll and interact like a real page.</p>
+        <button ref="previewCloseRef" type="button" class="live-preview__close" @click="closeLivePreview">
+          Close preview
+        </button>
+      </div>
+      <div class="live-preview__stage">
+        <GeneratedPagePreview :page="generatedPage" />
+      </div>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 import ReferenceAnalyzer from './components/ReferenceAnalyzer.vue';
+import GeneratedPagePreview from './components/GeneratedPagePreview.vue';
 import type { PagePlan, VisualDensity } from './types/pagePlan';
-import type { ReferenceAnalysis } from './types/referenceAnalysis';
+import type { GeneratedPage } from './types/generatedPage';
+import type { CtaStyle, ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
 import type { VisualTokens } from './types/visualTokens';
 import { createDefaultVisualTokens } from './types/visualTokens';
@@ -264,22 +258,6 @@ interface FormattingAnswers {
   density: VisualDensity;
   tone: string;
   notes: string;
-}
-
-interface GeneratedPageSection {
-  title: string;
-  body: string;
-}
-
-interface GeneratedPage {
-  densityKey: string;
-  kicker: string;
-  palette: string[];
-  referenceName: string;
-  referencePreview: string | null;
-  sections: GeneratedPageSection[];
-  summary: string;
-  title: string;
 }
 
 const densityOptions: VisualDensity[] = ['Comfortable', 'Compact', 'Editorial'];
@@ -322,6 +300,9 @@ const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
 const previewStatus = ref('');
 const previewTitleRef = ref<HTMLHeadingElement | null>(null);
+const isPreviewOpen = ref(false);
+const previewCloseRef = ref<HTMLButtonElement | null>(null);
+let previewTrigger: HTMLElement | null = null;
 
 const generatedBrief = computed(() => {
   const referenceLine = referencePreview.value
@@ -398,18 +379,6 @@ const generatedPreviewHtml = computed(() => {
     </main>
   </body>
 </html>`;
-});
-
-const generatedPageStyle = computed(() => {
-  const palette = generatedPage.value?.palette ?? [];
-  if (palette.length === 0) {
-    return {};
-  }
-
-  return {
-    '--token-accent': palette[0],
-    '--token-surface-soft': palette[1] ?? palette[0],
-  };
 });
 
 const generatedPlanJson = computed(() => {
@@ -540,6 +509,44 @@ async function generatePagePreview() {
   previewTitleRef.value?.focus();
 }
 
+/**
+ * Opens the full-screen live preview — the one-click, non-coder-facing view of
+ * the generated page. Generates the page first if needed, moves focus into the
+ * dialog, and remembers the trigger so focus can be restored on close.
+ */
+async function openLivePreview() {
+  // Capture the trigger first — generatePagePreview() below moves focus to the
+  // preview heading, so reading activeElement after it would restore focus to
+  // the wrong element on close.
+  previewTrigger = (document.activeElement as HTMLElement) ?? null;
+
+  if (!generatedPage.value) {
+    await generatePagePreview();
+  }
+
+  if (!generatedPage.value) {
+    return;
+  }
+
+  isPreviewOpen.value = true;
+  document.addEventListener('keydown', handlePreviewKeydown);
+  await nextTick();
+  previewCloseRef.value?.focus();
+}
+
+function closeLivePreview() {
+  isPreviewOpen.value = false;
+  document.removeEventListener('keydown', handlePreviewKeydown);
+  previewTrigger?.focus();
+  previewTrigger = null;
+}
+
+function handlePreviewKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeLivePreview();
+  }
+}
+
 async function copyJsonPlan() {
   if (!pagePlan.value) {
     previewStatus.value = 'Generate a JSON plan before copying it.';
@@ -598,7 +605,25 @@ function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
       title: section.title,
       body: section.body,
     })),
+    cta: deriveCta(plan.reference.analysis.ctaStyle),
   };
+}
+
+// The generated page's call-to-action honestly reflects the analyzer's
+// observed ctaStyle rather than being decorative — so the interactive element
+// a non-coder sees matches what was detected in the reference.
+function deriveCta(ctaStyle: CtaStyle): GeneratedPage['cta'] {
+  switch (ctaStyle) {
+    case 'Button-led':
+      return { kind: 'button', label: 'Get started' };
+    case 'Text-link':
+      return { kind: 'link', label: 'Learn more' };
+    case 'Form-first':
+      return { kind: 'form', label: 'Sign up' };
+    case 'None visible':
+    default:
+      return { kind: 'none', label: '' };
+  }
 }
 
 function escapeHtml(value: string) {
@@ -614,5 +639,6 @@ onBeforeUnmount(() => {
   if (referencePreview.value) {
     URL.revokeObjectURL(referencePreview.value);
   }
+  document.removeEventListener('keydown', handlePreviewKeydown);
 });
 </script>

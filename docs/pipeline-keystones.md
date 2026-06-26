@@ -42,3 +42,7 @@ The analysis step is now two tiers. Tier 1 is the always-on, no-LLM local color/
 ## 10. Vue Component Generation
 
 The one-shot output now includes a real Vue 3 single-file component, not just an HTML string. A pure, deterministic generator (`src/utils/vueCodegen.ts`) turns the page plan into a complete `.vue` file — typed `<script setup>`, semantic `<template>`, and `<style scoped>` that bakes the extracted palette into custom properties. The component's shape is chosen from the observed `layoutPattern` (single hero, feature cards, dashboard grid, or finder flow), so the structure matches the design. A "Copy Vue component" button and a code panel surface it in the app. See `docs/vue-codegen.md`.
+
+## 11. Live Preview
+
+A "▶ Preview page" button opens the generated page in a one-click, full-screen, scrollable overlay so a non-coder can see and interact with the result in real time, separate from the code panels. The page carries an interactive call-to-action that reflects the observed `ctaStyle` (button / link / email form / none). The overlay is an accessible modal dialog (focus trap to the close button, Escape to close, focus restored to the trigger) and reuses the shared `GeneratedPagePreview.vue` so the inline and full-screen views never drift. See `docs/live-preview.md`.

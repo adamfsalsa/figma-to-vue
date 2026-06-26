@@ -93,6 +93,26 @@ describe('App pipeline console', () => {
     expect(sfc).toContain('v-for="section in sections"');
   });
 
+  it('opens and closes a focused live preview dialog', async () => {
+    const user = userEvent.setup();
+    render(App);
+
+    await user.click(screen.getByRole('button', { name: '▶ Preview page' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Live preview of the generated page' });
+    expect(dialog).toBeInTheDocument();
+
+    const closeButton = screen.getByRole('button', { name: 'Close preview' });
+    expect(closeButton).toHaveFocus();
+
+    await user.click(closeButton);
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Live preview of the generated page' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '▶ Preview page' })).toHaveFocus();
+  });
+
   it('generates a static one-page preview from the current brief', async () => {
     const user = userEvent.setup();
     render(App);
