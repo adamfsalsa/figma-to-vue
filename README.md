@@ -14,6 +14,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Basic prompt support for formatting questions before code generation
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief
+- One-shot Vue 3 single-file component generated deterministically from the page plan
 - Vue 3 single-file components with strict TypeScript
 - Accessibility-first implementation with native form controls and focus management
 - Automated validation with Vitest, Testing Library, and axe

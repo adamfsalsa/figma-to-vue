@@ -38,3 +38,7 @@ The repository now includes a `vercel.json` target so the build settings are exp
 ## 9. Hybrid AI Analysis
 
 The analysis step is now two tiers. Tier 1 is the always-on, no-LLM local color/token extractor plus the human-guided analyzer form. Tier 2 is an optional "Enhance with AI" call routed through a Vercel serverless proxy (`api/analyze.ts`) so an API key never reaches the browser. The proxy now makes a real `claude-haiku-4-5` vision call with validated JSON output and durable Upstash-backed rate limiting, but stays dormant (returns `not_configured`) until `ANTHROPIC_API_KEY` and the Upstash store are set — so the app is safe to deploy with neither. Cost is bounded by a low `max_tokens`, client-side image downscaling, and the operator's prepaid $5 cap. Full detail, the configuration checklist, and the "never exceed $5" steps live in `docs/ai-analysis.md`.
+
+## 10. Vue Component Generation
+
+The one-shot output now includes a real Vue 3 single-file component, not just an HTML string. A pure, deterministic generator (`src/utils/vueCodegen.ts`) turns the page plan into a complete `.vue` file — typed `<script setup>`, semantic `<template>`, and `<style scoped>` that bakes the extracted palette into custom properties. A "Copy Vue component" button and a code panel surface it in the app. Open follow-up: branch the template shape by `layoutPattern`. See `docs/vue-codegen.md`.

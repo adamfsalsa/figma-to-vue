@@ -141,8 +141,9 @@
           <h2 id="preview-title" ref="previewTitleRef" tabindex="-1">Generated page preview</h2>
           <p>
             This local generator turns the current brief into a static one-page
-            composition. It is deterministic for now, which keeps the milestone
-            reviewable before a real LLM/code-writing service is introduced.
+            composition, a copyable HTML export, and a real Vue 3 single-file
+            component. It is deterministic, which keeps the output reviewable
+            and diffable.
           </p>
         </div>
         <div class="preview-actions">
@@ -158,6 +159,9 @@
           <button type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
             Copy HTML
           </button>
+          <button type="button" :disabled="!pagePlan" @click="copyVueComponent">
+            Copy Vue component
+          </button>
         </div>
       </div>
 
@@ -169,6 +173,14 @@
           <p>Typed contract between the assistant and renderer</p>
         </div>
         <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
+      </section>
+
+      <section class="plan-layer" aria-labelledby="sfc-title">
+        <div class="panel__title-row">
+          <h3 id="sfc-title">5. Vue component (.vue)</h3>
+          <p>One-shot Vue 3 SFC generated from the plan</p>
+        </div>
+        <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
       </section>
 
       <article
@@ -239,6 +251,7 @@ import { createDefaultVisualTokens } from './types/visualTokens';
 import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
 import { extractVisualTokensFromImage } from './utils/colorExtraction';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
+import { generateVueSfc } from './utils/vueCodegen';
 
 interface DeliveryStep {
   index: string;
@@ -414,6 +427,14 @@ const generatedPlanJson = computed(() => {
   return serializePagePlan(pagePlan.value);
 });
 
+const generatedVueSfc = computed(() => {
+  if (!pagePlan.value) {
+    return '// Generate a JSON plan to produce a Vue component.';
+  }
+
+  return generateVueSfc(pagePlan.value);
+});
+
 function handleFileInput(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -547,6 +568,21 @@ async function copyPreviewHtml() {
 
   await navigator.clipboard.writeText(generatedPreviewHtml.value);
   previewStatus.value = 'Preview HTML copied.';
+}
+
+async function copyVueComponent() {
+  if (!pagePlan.value) {
+    previewStatus.value = 'Generate a JSON plan before copying the Vue component.';
+    return;
+  }
+
+  if (!navigator.clipboard) {
+    previewStatus.value = 'Clipboard is unavailable in this browser.';
+    return;
+  }
+
+  await navigator.clipboard.writeText(generatedVueSfc.value);
+  previewStatus.value = 'Vue component copied.';
 }
 
 function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {

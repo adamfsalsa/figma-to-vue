@@ -16,6 +16,7 @@ describe('App pipeline console', () => {
     );
     expect(screen.getByRole('button', { name: 'Generate JSON plan' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate preview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy Vue component' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'No page generated yet' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'UI to Git to deployed page' })).toBeInTheDocument();
   });
@@ -85,6 +86,11 @@ describe('App pipeline console', () => {
     expect(plan.sections[1].body).toContain('5 content sections');
     expect(plan.sections[2].body).toBe('Use a strong visual hierarchy.');
     expect(plan.accessibility.notes).toContain('Use a single h1 for the generated page.');
+
+    const sfc = screen.getByLabelText('Generated Vue single-file component').textContent ?? '';
+    expect(sfc).toContain('<script setup lang="ts">');
+    expect(sfc).toContain('Dashboard view from design reference');
+    expect(sfc).toContain('v-for="section in sections"');
   });
 
   it('generates a static one-page preview from the current brief', async () => {
