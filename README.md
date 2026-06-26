@@ -9,6 +9,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Figma-to-code planning for component boundaries, state, and design tokens
 - Drag-and-drop reference intake for screenshots or exported frames
 - Basic prompt support for formatting questions before code generation
+- Static one-page preview generation from the current brief
 - Vue 3 single-file components with strict TypeScript
 - Accessibility-first implementation with native form controls and focus management
 - Automated validation with Vitest, Testing Library, and axe
@@ -19,9 +20,10 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 1. Design intake captures layout, copy, hierarchy, and interaction intent.
 2. Basic LLM formatting questions shape the implementation brief.
 3. Token extraction converts observed colors, type, spacing, and layout values into CSS custom properties.
-4. Vue implementation turns the plan into semantic components.
-5. Git records reviewed code, docs, tests, and pipeline decisions.
-6. Deployment publishes the final one-page build through Vercel or a similar static host.
+4. A deterministic generator creates a static one-page preview from the brief.
+5. Vue implementation turns the plan into semantic components.
+6. Git records reviewed code, docs, tests, and pipeline decisions.
+7. Deployment publishes the final one-page build through Vercel or a similar static host.
 
 ## Tech Stack
 

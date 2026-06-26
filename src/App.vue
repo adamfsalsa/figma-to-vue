@@ -100,8 +100,70 @@
             <button type="button" @click="copyBrief">Copy brief</button>
           </div>
           <pre aria-label="Generated implementation brief">{{ generatedBrief }}</pre>
-          <p class="copy-status" role="status">{{ copyStatus }}</p>
+          <p class="copy-status" role="status">{{ briefCopyStatus }}</p>
         </section>
+      </div>
+    </section>
+
+    <section class="preview-lab" aria-labelledby="preview-title">
+      <div class="preview-lab__intro">
+        <div>
+          <p class="eyebrow">One-shot output</p>
+          <h2 id="preview-title" ref="previewTitleRef" tabindex="-1">Generated page preview</h2>
+          <p>
+            This local generator turns the current brief into a static one-page
+            composition. It is deterministic for now, which keeps the milestone
+            reviewable before a real LLM/code-writing service is introduced.
+          </p>
+        </div>
+        <div class="preview-actions">
+          <button class="button-primary" type="button" @click="generatePagePreview">
+            Generate preview
+          </button>
+          <button type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
+            Copy HTML
+          </button>
+        </div>
+      </div>
+
+      <p class="copy-status" role="status">{{ previewStatus }}</p>
+
+      <article
+        v-if="generatedPage"
+        class="generated-page"
+        :class="`generated-page--${generatedPage.densityKey}`"
+        aria-label="Generated one-page website preview"
+      >
+        <header class="generated-page__hero">
+          <div>
+            <p class="generated-page__kicker">{{ generatedPage.kicker }}</p>
+            <h3>{{ generatedPage.title }}</h3>
+            <p>{{ generatedPage.summary }}</p>
+            <a href="#generated-page-plan">View plan</a>
+          </div>
+          <figure v-if="generatedPage.referencePreview">
+            <img
+              :src="generatedPage.referencePreview"
+              :alt="`Reference used for ${generatedPage.title}`"
+            />
+            <figcaption>{{ generatedPage.referenceName }}</figcaption>
+          </figure>
+        </header>
+
+        <section id="generated-page-plan" class="generated-page__sections">
+          <div v-for="section in generatedPage.sections" :key="section.title">
+            <h4>{{ section.title }}</h4>
+            <p>{{ section.body }}</p>
+          </div>
+        </section>
+      </article>
+
+      <div v-else class="preview-placeholder">
+        <h3>No page generated yet</h3>
+        <p>
+          Add a reference or adjust the formatting answers, then generate a
+          one-page preview from the current brief.
+        </p>
       </div>
     </section>
 
@@ -123,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 
 interface DeliveryStep {
   index: string;
@@ -136,6 +198,21 @@ interface FormattingAnswers {
   density: string;
   tone: string;
   notes: string;
+}
+
+interface GeneratedPageSection {
+  title: string;
+  body: string;
+}
+
+interface GeneratedPage {
+  densityKey: string;
+  kicker: string;
+  referenceName: string;
+  referencePreview: string | null;
+  sections: GeneratedPageSection[];
+  summary: string;
+  title: string;
 }
 
 const densityOptions = ['Comfortable', 'Compact', 'Editorial'];
@@ -168,7 +245,10 @@ const deliverySteps: DeliveryStep[] = [
 const isDragging = ref(false);
 const referenceName = ref('No reference selected');
 const referencePreview = ref<string | null>(null);
-const copyStatus = ref('');
+const briefCopyStatus = ref('');
+const generatedPage = ref<GeneratedPage | null>(null);
+const previewStatus = ref('');
+const previewTitleRef = ref<HTMLHeadingElement | null>(null);
 
 const generatedBrief = computed(() => {
   const referenceLine = referencePreview.value
@@ -196,6 +276,49 @@ const generatedBrief = computed(() => {
   ].join('\n');
 });
 
+const generatedPreviewHtml = computed(() => {
+  if (!generatedPage.value) {
+    return '';
+  }
+
+  const page = generatedPage.value;
+  const imageMarkup = page.referencePreview
+    ? `
+      <figure>
+        <img src="${escapeHtml(page.referencePreview)}" alt="Reference used for ${escapeHtml(page.title)}">
+        <figcaption>${escapeHtml(page.referenceName)}</figcaption>
+      </figure>`
+    : '';
+  const sectionsMarkup = page.sections
+    .map(
+      (section) => `
+      <section>
+        <h2>${escapeHtml(section.title)}</h2>
+        <p>${escapeHtml(section.body)}</p>
+      </section>`,
+    )
+    .join('');
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(page.title)}</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>${escapeHtml(page.kicker)}</p>
+        <h1>${escapeHtml(page.title)}</h1>
+        <p>${escapeHtml(page.summary)}</p>${imageMarkup}
+      </header>
+      ${sectionsMarkup}
+    </main>
+  </body>
+</html>`;
+});
+
 function handleFileInput(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -221,14 +344,80 @@ function setReference(file: File) {
 }
 
 async function copyBrief() {
-  copyStatus.value = '';
+  briefCopyStatus.value = '';
 
   if (!navigator.clipboard) {
-    copyStatus.value = 'Clipboard is unavailable in this browser.';
+    briefCopyStatus.value = 'Clipboard is unavailable in this browser.';
     return;
   }
 
   await navigator.clipboard.writeText(generatedBrief.value);
-  copyStatus.value = 'Brief copied.';
+  briefCopyStatus.value = 'Brief copied.';
 }
+
+async function generatePagePreview() {
+  const notes = formatting.notes.trim();
+  const referenceLabel = referencePreview.value
+    ? referenceName.value
+    : 'the uploaded reference placeholder';
+
+  generatedPage.value = {
+    densityKey: formatting.density.toLowerCase(),
+    kicker: `${formatting.pageType} concept`,
+    referenceName: referenceLabel,
+    referencePreview: referencePreview.value,
+    title: `${formatting.pageType} from design reference`,
+    summary: `A ${formatting.density.toLowerCase()} one-page ${formatting.pageType.toLowerCase()} shaped around a ${formatting.tone.toLowerCase()} direction.`,
+    sections: [
+      {
+        title: 'Design signals',
+        body: referencePreview.value
+          ? `Use ${referenceName.value} as the visual reference for hierarchy, rhythm, and imagery.`
+          : 'Use the formatting answers as the first design signal until a reference image is added.',
+      },
+      {
+        title: 'Implementation plan',
+        body: `Build semantic Vue components with ${formatting.density.toLowerCase()} spacing, CSS tokens, and a clear responsive layout.`,
+      },
+      {
+        title: 'Review notes',
+        body: notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
+      },
+    ],
+  };
+
+  previewStatus.value = 'Generated a static one-page preview from the current brief.';
+  await nextTick();
+  previewTitleRef.value?.focus();
+}
+
+async function copyPreviewHtml() {
+  if (!generatedPage.value) {
+    previewStatus.value = 'Generate a preview before copying HTML.';
+    return;
+  }
+
+  if (!navigator.clipboard) {
+    previewStatus.value = 'Clipboard is unavailable in this browser.';
+    return;
+  }
+
+  await navigator.clipboard.writeText(generatedPreviewHtml.value);
+  previewStatus.value = 'Preview HTML copied.';
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+onBeforeUnmount(() => {
+  if (referencePreview.value) {
+    URL.revokeObjectURL(referencePreview.value);
+  }
+});
 </script>

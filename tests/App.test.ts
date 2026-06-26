@@ -10,6 +10,8 @@ describe('App pipeline console', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Reference intake' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: '2. Formatting assistant' })).toBeInTheDocument();
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent('Pipeline gates:');
+    expect(screen.getByRole('button', { name: 'Generate preview' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'No page generated yet' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'UI to Git to deployed page' })).toBeInTheDocument();
   });
 
@@ -42,6 +44,26 @@ describe('App pipeline console', () => {
     expect(await screen.findByText('finder-reference.png')).toBeInTheDocument();
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent(
       'Reference: finder-reference.png',
+    );
+  });
+
+  it('generates a static one-page preview from the current brief', async () => {
+    const user = userEvent.setup();
+    render(App);
+
+    await user.selectOptions(screen.getByLabelText('What are we building?'), 'Marketing section');
+    await user.click(screen.getByRole('radio', { name: 'Compact' }));
+    await user.clear(screen.getByLabelText('UI tone'));
+    await user.type(screen.getByLabelText('UI tone'), 'Sharp and minimal');
+    await user.type(screen.getByLabelText('Formatting notes'), 'Lead with a narrow hero and clear proof points.');
+    await user.click(screen.getByRole('button', { name: 'Generate preview' }));
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Generated page preview' })).toHaveFocus();
+    expect(screen.getByRole('article', { name: 'Generated one-page website preview' })).toHaveTextContent(
+      'Marketing section from design reference',
+    );
+    expect(screen.getByRole('article', { name: 'Generated one-page website preview' })).toHaveTextContent(
+      'Lead with a narrow hero and clear proof points.',
     );
   });
 });

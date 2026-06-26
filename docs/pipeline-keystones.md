@@ -16,7 +16,11 @@ The project intentionally starts with very small questions: page type, density, 
 
 The generated brief becomes part of the reviewable work: Vue components, CSS tokens, tests, and documentation are committed to Git with the rest of the case study.
 
-## 5. Git to Deployment
+## 5. One-Page Preview
+
+The app can now turn the current brief into a deterministic static one-page preview. This proves the core "one-shot page" idea without introducing a live LLM or file-writing automation too early.
+
+## 6. Git to Deployment
 
 The target deployment path is a one-page static build hosted on Vercel or an equivalent platform. A future milestone should add a deploy status panel and the production URL.
 The repository now includes a `vercel.json` target so the build settings are explicit.
