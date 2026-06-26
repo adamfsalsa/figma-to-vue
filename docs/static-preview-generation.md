@@ -17,3 +17,5 @@ This step intentionally avoids a real LLM call. A deterministic generator makes 
 ## Next Step
 
 Replace or augment the deterministic generator with a small backend LLM endpoint that returns a constrained JSON page plan. Vue can then render that JSON into the same preview surface.
+
+Two steps toward that already exist. The hybrid analysis tier (`api/analyze.ts`, `docs/ai-analysis.md`) enriches the plan, and the deterministic generator now emits a real Vue 3 single-file component in addition to the HTML export — see `docs/vue-codegen.md`. The generated preview also applies the locally-extracted palette as CSS custom properties (`--token-accent`, `--token-surface-soft`), so real reference colors flow through to the rendered page and the generated component.

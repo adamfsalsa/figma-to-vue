@@ -26,6 +26,8 @@ The local deterministic generator returns:
 
 The `reference` block includes the human-guided analyzer observations, so the Vue preview renders from structured interpretation rather than directly from free-form prompt text.
 
+The `tokens` block now carries a real `palette` and `paletteSource`, extracted locally from the uploaded image pixels (`src/utils/colorExtraction.ts`) rather than derived only from dropdown labels. When no image has been analyzed, `palette` is empty and `paletteSource` is `placeholder`. See `docs/ai-analysis.md`.
+
 ## Future LLM Integration
 
 A backend LLM endpoint should return this same JSON shape. The frontend can then validate the response, render the preview, and reject malformed or unsafe output before any Git or deploy automation runs.

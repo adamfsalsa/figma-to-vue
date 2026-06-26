@@ -1,8 +1,10 @@
 import type { PagePlan, PagePlanInput } from '../types/pagePlan';
+import { createDefaultVisualTokens } from '../types/visualTokens';
 
 export function buildPagePlan(input: PagePlanInput): PagePlan {
   const notes = input.notes.trim();
   const densityKey = input.density.toLowerCase();
+  const visualTokens = input.visualTokens ?? createDefaultVisualTokens();
 
   return {
     schemaVersion: 'figma-to-vue.page-plan.v1',
@@ -55,6 +57,8 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
       accentRole: input.analysis.ctaStyle === 'None visible' ? 'supporting-action' : 'primary-action',
       layoutDensity: densityKey,
       spacing: densityKey === 'compact' ? 'tight' : densityKey === 'editorial' ? 'generous' : 'balanced',
+      palette: visualTokens.palette,
+      paletteSource: visualTokens.source,
     },
   };
 }

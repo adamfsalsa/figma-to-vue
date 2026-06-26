@@ -51,6 +51,29 @@
           <p v-else class="empty-state">
             Start with a screenshot, exported Figma frame, or product reference.
           </p>
+
+          <div v-if="visualTokens.palette.length > 0" class="palette-preview">
+            <p class="palette-preview__label" id="palette-preview-label">Extracted palette (local, no AI)</p>
+            <ul class="palette-preview__swatches" aria-labelledby="palette-preview-label">
+              <li
+                v-for="color in visualTokens.palette"
+                :key="color"
+                class="palette-preview__swatch"
+                :style="{ backgroundColor: color }"
+                :title="color"
+              ></li>
+            </ul>
+            <p class="visually-hidden">
+              Dominant colors detected in the reference image: {{ visualTokens.palette.join(', ') }}.
+            </p>
+          </div>
+
+          <div v-if="referencePreview" class="ai-enhance">
+            <button type="button" :disabled="aiAnalysisPending" @click="enhanceWithAi">
+              {{ aiAnalysisPending ? 'Asking AI…' : 'Enhance with AI (optional)' }}
+            </button>
+            <p class="copy-status" role="status">{{ aiAnalysisStatus }}</p>
+          </div>
         </section>
 
         <section class="panel" aria-labelledby="assistant-title">
@@ -118,8 +141,9 @@
           <h2 id="preview-title" ref="previewTitleRef" tabindex="-1">Generated page preview</h2>
           <p>
             This local generator turns the current brief into a static one-page
-            composition. It is deterministic for now, which keeps the milestone
-            reviewable before a real LLM/code-writing service is introduced.
+            composition, a copyable HTML export, and a real Vue 3 single-file
+            component. It is deterministic, which keeps the output reviewable
+            and diffable.
           </p>
         </div>
         <div class="preview-actions">
@@ -135,6 +159,9 @@
           <button type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
             Copy HTML
           </button>
+          <button type="button" :disabled="!pagePlan" @click="copyVueComponent">
+            Copy Vue component
+          </button>
         </div>
       </div>
 
@@ -148,10 +175,19 @@
         <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
       </section>
 
+      <section class="plan-layer" aria-labelledby="sfc-title">
+        <div class="panel__title-row">
+          <h3 id="sfc-title">5. Vue component (.vue)</h3>
+          <p>One-shot Vue 3 SFC generated from the plan</p>
+        </div>
+        <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
+      </section>
+
       <article
         v-if="generatedPage"
         class="generated-page"
         :class="`generated-page--${generatedPage.densityKey}`"
+        :style="generatedPageStyle"
         aria-label="Generated one-page website preview"
       >
         <header class="generated-page__hero">
@@ -210,7 +246,12 @@ import ReferenceAnalyzer from './components/ReferenceAnalyzer.vue';
 import type { PagePlan, VisualDensity } from './types/pagePlan';
 import type { ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
+import type { VisualTokens } from './types/visualTokens';
+import { createDefaultVisualTokens } from './types/visualTokens';
+import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
+import { extractVisualTokensFromImage } from './utils/colorExtraction';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
+import { generateVueSfc } from './utils/vueCodegen';
 
 interface DeliveryStep {
   index: string;
@@ -233,6 +274,7 @@ interface GeneratedPageSection {
 interface GeneratedPage {
   densityKey: string;
   kicker: string;
+  palette: string[];
   referenceName: string;
   referencePreview: string | null;
   sections: GeneratedPageSection[];
@@ -269,8 +311,12 @@ const deliverySteps: DeliveryStep[] = [
 
 const isDragging = ref(false);
 const referenceName = ref('No reference selected');
+const referenceFile = ref<File | null>(null);
 const referencePreview = ref<string | null>(null);
 const referenceAnalysis = ref<ReferenceAnalysis>(createDefaultReferenceAnalysis());
+const visualTokens = ref<VisualTokens>(createDefaultVisualTokens());
+const aiAnalysisStatus = ref('');
+const aiAnalysisPending = ref(false);
 const briefCopyStatus = ref('');
 const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
@@ -354,6 +400,18 @@ const generatedPreviewHtml = computed(() => {
 </html>`;
 });
 
+const generatedPageStyle = computed(() => {
+  const palette = generatedPage.value?.palette ?? [];
+  if (palette.length === 0) {
+    return {};
+  }
+
+  return {
+    '--token-accent': palette[0],
+    '--token-surface-soft': palette[1] ?? palette[0],
+  };
+});
+
 const generatedPlanJson = computed(() => {
   if (!pagePlan.value) {
     return JSON.stringify(
@@ -367,6 +425,14 @@ const generatedPlanJson = computed(() => {
   }
 
   return serializePagePlan(pagePlan.value);
+});
+
+const generatedVueSfc = computed(() => {
+  if (!pagePlan.value) {
+    return '// Generate a JSON plan to produce a Vue component.';
+  }
+
+  return generateVueSfc(pagePlan.value);
 });
 
 function handleFileInput(event: Event) {
@@ -387,10 +453,50 @@ function handleDrop(event: DragEvent) {
 
 function setReference(file: File) {
   referenceName.value = file.name;
+  referenceFile.value = file;
   if (referencePreview.value) {
     URL.revokeObjectURL(referencePreview.value);
   }
   referencePreview.value = URL.createObjectURL(file);
+  visualTokens.value = createDefaultVisualTokens();
+  aiAnalysisStatus.value = '';
+
+  void extractVisualTokensFromImage(file).then((tokens) => {
+    visualTokens.value = tokens;
+  });
+}
+
+/**
+ * Optional second tier on top of the always-available local analyzer above.
+ * Calls the /api/analyze proxy (api/analyze.ts) — currently stubbed, so this
+ * normally resolves to a graceful "not configured" status and leaves the
+ * analyzer fields exactly as the user set them. Once a provider is wired up
+ * server-side, a successful response merges into referenceAnalysis without
+ * any change needed here.
+ */
+async function enhanceWithAi() {
+  if (!referenceFile.value || aiAnalysisPending.value) {
+    return;
+  }
+
+  aiAnalysisPending.value = true;
+  aiAnalysisStatus.value = 'Asking the AI analyzer…';
+
+  try {
+    const imageDataUrl = await fileToDownscaledDataUrl(referenceFile.value);
+    const result = await requestAiAnalysis(imageDataUrl);
+
+    if (result.ok) {
+      referenceAnalysis.value = { ...referenceAnalysis.value, ...result.analysis };
+      aiAnalysisStatus.value = 'AI analysis applied. Review the fields below before continuing.';
+    } else {
+      aiAnalysisStatus.value = result.message;
+    }
+  } catch {
+    aiAnalysisStatus.value = 'AI analysis is unavailable right now. Using local analysis instead.';
+  } finally {
+    aiAnalysisPending.value = false;
+  }
 }
 
 async function copyBrief() {
@@ -413,6 +519,7 @@ function generateJsonPlan() {
     pageType: formatting.pageType,
     referenceName: referencePreview.value ? referenceName.value : null,
     tone: formatting.tone,
+    visualTokens: visualTokens.value,
   });
 
   previewStatus.value = 'Generated constrained JSON page plan.';
@@ -463,10 +570,26 @@ async function copyPreviewHtml() {
   previewStatus.value = 'Preview HTML copied.';
 }
 
+async function copyVueComponent() {
+  if (!pagePlan.value) {
+    previewStatus.value = 'Generate a JSON plan before copying the Vue component.';
+    return;
+  }
+
+  if (!navigator.clipboard) {
+    previewStatus.value = 'Clipboard is unavailable in this browser.';
+    return;
+  }
+
+  await navigator.clipboard.writeText(generatedVueSfc.value);
+  previewStatus.value = 'Vue component copied.';
+}
+
 function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
   return {
     densityKey: plan.page.densityKey,
     kicker: plan.page.kicker,
+    palette: plan.tokens.palette,
     referenceName: plan.reference.name ?? 'the uploaded reference placeholder',
     referencePreview: referencePreview.value,
     title: plan.page.title,

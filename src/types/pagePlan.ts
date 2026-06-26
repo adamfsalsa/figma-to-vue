@@ -1,4 +1,5 @@
 import type { ReferenceAnalysis } from './referenceAnalysis';
+import type { VisualTokens } from './visualTokens';
 
 export type VisualDensity = 'Comfortable' | 'Compact' | 'Editorial';
 
@@ -9,6 +10,12 @@ export interface PagePlanInput {
   pageType: string;
   referenceName: string | null;
   tone: string;
+  /**
+   * Real, locally-extracted palette/luminance from the uploaded reference
+   * image (see src/utils/colorExtraction.ts). Optional because a plan can
+   * still be generated before any image is uploaded.
+   */
+  visualTokens?: VisualTokens;
 }
 
 export interface PagePlanSection {
@@ -46,5 +53,8 @@ export interface PagePlan {
     accentRole: string;
     layoutDensity: string;
     spacing: string;
+    /** Dominant colors, most frequent first. Empty until an image is analyzed. */
+    palette: string[];
+    paletteSource: VisualTokens['source'];
   };
 }
