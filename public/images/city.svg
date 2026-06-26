@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Abstract city cycling scene">
+  <rect width="200" height="200" fill="#dfe7ef"/>
+  <path d="M30 72h28v90H30zm45-28h34v118H75zm51 50h42v68h-42z" fill="#65717f"/>
+  <path d="M0 155h200v45H0z" fill="#bfc7cf"/>
+  <path d="M31 177h138" stroke="#ffffff" stroke-width="6" stroke-dasharray="18 14"/>
+  <circle cx="82" cy="146" r="14" fill="#1a1a1a"/>
+  <circle cx="126" cy="146" r="14" fill="#1a1a1a"/>
+</svg>

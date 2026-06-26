@@ -1,0 +1,31 @@
+:root {
+  --color-heading: #000000;
+  --color-text: #1a1a1a;
+  --color-muted: #5f6368;
+  --color-surface: #ffffff;
+  --color-page: #f7f7f4;
+  --color-border: #d7d9dc;
+  --color-focus: #1f6feb;
+  --color-progress: #4a90e2;
+  --color-progress-track: #e4ecf7;
+
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: system-ui, sans-serif;
+  --fw-display: 700;
+  --fw-option-title: 500;
+  --fs-heading: 42px;
+  --lh-heading: 1.1;
+  --fs-option-title: 18px;
+  --fs-caption: 14px;
+
+  --container-max: 1270px;
+  --image-size: 163px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+}

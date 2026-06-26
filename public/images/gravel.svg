@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Abstract gravel road scene">
+  <rect width="200" height="200" fill="#e7e0d0"/>
+  <path d="M0 96c36-20 68-24 96-10 32 16 66 11 104-14v128H0z" fill="#9c9f70"/>
+  <path d="M61 200c5-55 20-93 44-114 20 26 34 64 43 114z" fill="#8b8172"/>
+  <circle cx="77" cy="145" r="3" fill="#574f45"/>
+  <circle cx="118" cy="166" r="4" fill="#574f45"/>
+  <circle cx="101" cy="128" r="3" fill="#574f45"/>
+</svg>

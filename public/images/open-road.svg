@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Abstract road cycling scene">
+  <rect width="200" height="200" fill="#cfe2f6"/>
+  <path d="M0 138h200v62H0z" fill="#6f8f5b"/>
+  <path d="M86 200l22-86h16l38 86z" fill="#2f3437"/>
+  <path d="M101 200l14-86" stroke="#f7f7f4" stroke-width="5"/>
+  <circle cx="62" cy="116" r="18" fill="#ffffff"/>
+  <circle cx="138" cy="116" r="18" fill="#ffffff"/>
+</svg>

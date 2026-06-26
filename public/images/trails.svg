@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Abstract mountain trail scene">
+  <rect width="200" height="200" fill="#d8e6d0"/>
+  <path d="M0 145 47 78l34 42 35-61 84 86v55H0z" fill="#526f45"/>
+  <path d="M26 200c25-40 62-55 111-45 20 4 37 1 63-13v58z" fill="#8a6b4f"/>
+  <circle cx="73" cy="130" r="16" fill="#f7f7f4"/>
+  <circle cx="135" cy="130" r="16" fill="#f7f7f4"/>
+</svg>
