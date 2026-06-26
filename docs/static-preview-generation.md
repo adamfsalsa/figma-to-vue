@@ -17,3 +17,5 @@ This step intentionally avoids a real LLM call. A deterministic generator makes 
 ## Next Step
 
 Replace or augment the deterministic generator with a small backend LLM endpoint that returns a constrained JSON page plan. Vue can then render that JSON into the same preview surface.
+
+A first step toward that backend already exists: a stubbed Vercel proxy at `api/analyze.ts` and a hybrid analysis tier described in `docs/ai-analysis.md`. The generated preview also now applies the locally-extracted palette as CSS custom properties (`--token-accent`, `--token-surface-soft`), so real reference colors flow through to the rendered page.

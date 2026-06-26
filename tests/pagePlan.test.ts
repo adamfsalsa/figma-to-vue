@@ -1,5 +1,6 @@
 import { buildPagePlan, serializePagePlan } from '../src/utils/pagePlan';
 import { createDefaultReferenceAnalysis } from '../src/types/referenceAnalysis';
+import type { VisualTokens } from '../src/types/visualTokens';
 
 describe('page plan layer', () => {
   it('builds a constrained deterministic page plan', () => {
@@ -30,6 +31,30 @@ describe('page plan layer', () => {
     ]);
     expect(plan.tokens.spacing).toBe('tight');
     expect(plan.tokens.accentRole).toBe('primary-action');
+    expect(plan.tokens.palette).toEqual([]);
+    expect(plan.tokens.paletteSource).toBe('placeholder');
+  });
+
+  it('carries a real extracted palette into the tokens block when provided', () => {
+    const visualTokens: VisualTokens = {
+      palette: ['#0a0ac8', '#f0f0f0'],
+      averageLuminance: 0.18,
+      isDark: true,
+      source: 'extracted-from-reference',
+    };
+
+    const plan = buildPagePlan({
+      analysis: createDefaultReferenceAnalysis(),
+      density: 'Comfortable',
+      notes: '',
+      pageType: 'Landing page',
+      referenceName: 'reference.png',
+      tone: 'Calm',
+      visualTokens,
+    });
+
+    expect(plan.tokens.palette).toEqual(['#0a0ac8', '#f0f0f0']);
+    expect(plan.tokens.paletteSource).toBe('extracted-from-reference');
   });
 
   it('serializes page plans as readable JSON', () => {

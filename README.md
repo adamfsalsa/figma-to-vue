@@ -9,6 +9,8 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Figma-to-code planning for component boundaries, state, and design tokens
 - Drag-and-drop reference intake for screenshots or exported frames
 - Human-guided reference analyzer for visible design observations
+- Local, no-LLM color/token extraction from the uploaded reference image
+- Optional "Enhance with AI" tier behind a key-safe Vercel proxy (provider call stubbed for now)
 - Basic prompt support for formatting questions before code generation
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief
@@ -23,7 +25,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 2. Human-guided analysis records visible layout and composition decisions.
 3. Basic formatting questions shape the implementation brief.
 4. A constrained JSON page plan captures the render contract.
-5. Token extraction converts observed colors, type, spacing, and layout values into CSS custom properties.
+5. Token extraction reads a real color palette and luminance directly from the uploaded image pixels (local, no LLM), feeding CSS custom properties.
 6. A deterministic generator creates a static one-page preview from the plan.
 7. Vue implementation turns the plan into semantic components.
 8. Git records reviewed code, docs, tests, and pipeline decisions.
