@@ -238,11 +238,12 @@ import ReferenceAnalyzer from './components/ReferenceAnalyzer.vue';
 import GeneratedPagePreview from './components/GeneratedPagePreview.vue';
 import type { PagePlan, VisualDensity } from './types/pagePlan';
 import type { GeneratedPage } from './types/generatedPage';
-import type { CtaStyle, ReferenceAnalysis } from './types/referenceAnalysis';
+import type { ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
 import type { VisualTokens } from './types/visualTokens';
 import { createDefaultVisualTokens } from './types/visualTokens';
 import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
+import { deriveCta } from './utils/cta';
 import { extractVisualTokensFromImage } from './utils/colorExtraction';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 import { generateVueSfc } from './utils/vueCodegen';
@@ -607,23 +608,6 @@ function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
     })),
     cta: deriveCta(plan.reference.analysis.ctaStyle),
   };
-}
-
-// The generated page's call-to-action honestly reflects the analyzer's
-// observed ctaStyle rather than being decorative — so the interactive element
-// a non-coder sees matches what was detected in the reference.
-function deriveCta(ctaStyle: CtaStyle): GeneratedPage['cta'] {
-  switch (ctaStyle) {
-    case 'Button-led':
-      return { kind: 'button', label: 'Get started' };
-    case 'Text-link':
-      return { kind: 'link', label: 'Learn more' };
-    case 'Form-first':
-      return { kind: 'form', label: 'Sign up' };
-    case 'None visible':
-    default:
-      return { kind: 'none', label: '' };
-  }
 }
 
 function escapeHtml(value: string) {

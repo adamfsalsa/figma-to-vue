@@ -53,8 +53,9 @@ is `GeneratedPage` in `src/types/generatedPage.ts`.
 
 ## Not Implemented Yet
 
-- The "Copy HTML" export does not yet include the CTA (the live preview and the
-  HTML artifact differ on that one element).
+- The generated Vue SFC now includes the same CTA (shared `deriveCta`), but the
+  "Copy HTML" export still does not — the live preview and the SFC match; the
+  HTML artifact is the one outlier.
 - Headings inside the preview are `h3`/`h4` to fit the host document outline; a
   true standalone page would start at `h1`. This matters only if the preview is
   ever opened in its own tab/route.
@@ -63,4 +64,4 @@ is `GeneratedPage` in `src/types/generatedPage.ts`.
 
 Give the live preview an "Open in new tab" action backed by the styled HTML
 export (so it is a genuine standalone page at `h1`), and bring the CTA into the
-HTML and SFC generators so all three artifacts match the preview exactly.
+HTML export so all three artifacts match the preview exactly.

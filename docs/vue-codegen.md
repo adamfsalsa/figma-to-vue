@@ -11,9 +11,11 @@ complete `.vue` file as a string:
 
 - `<script setup lang="ts">` with a typed `PageSection` interface and the page
   content (`kicker`, `title`, `summary`, `sections`) as `const`s.
-- `<template>` with a single `<h1>`, the kicker and summary, and a `v-for` over
-  the sections rendering each as an `<h2>` + body — semantic and accessible by
-  default.
+- `<template>` with a single `<h1>`, the kicker and summary, a call-to-action,
+  and a `v-for` over the sections rendering each as an `<h2>` + body — semantic
+  and accessible by default. The CTA is derived from the analyzer's `ctaStyle`
+  via the shared `deriveCta` (`src/utils/cta.ts`), so it matches the CTA in the
+  live preview exactly (button / link / accessible email form / none).
 - `<style scoped>` that bakes the locally-extracted palette (when present) into
   `--token-accent` / `--token-surface-soft` custom properties, with hardcoded
   fallbacks when no image has been analyzed.
