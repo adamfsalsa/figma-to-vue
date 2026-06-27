@@ -51,17 +51,23 @@ The rendered page lives in one component (`GeneratedPagePreview.vue`), used by
 both the inline preview and the overlay, so the two never drift. Its data shape
 is `GeneratedPage` in `src/types/generatedPage.ts`.
 
+## Artifact Parity
+
+All three outputs now match on content via the shared `deriveCta`: the live
+preview, the generated Vue SFC (`src/utils/vueCodegen.ts`), and the styled HTML
+export (`src/utils/htmlExport.ts`) render the same hero, CTA, and sections. The
+HTML export is now a self-styled standalone document (palette-tinted, with the
+CTA), so it can be opened directly in a browser.
+
 ## Not Implemented Yet
 
-- The generated Vue SFC now includes the same CTA (shared `deriveCta`), but the
-  "Copy HTML" export still does not — the live preview and the SFC match; the
-  HTML artifact is the one outlier.
-- Headings inside the preview are `h3`/`h4` to fit the host document outline; a
-  true standalone page would start at `h1`. This matters only if the preview is
-  ever opened in its own tab/route.
+- Headings inside the in-app preview are `h3`/`h4` to fit the host document
+  outline; the standalone HTML export correctly starts at `h1`. The live
+  preview has no "open in new tab" action yet — it renders the in-app component,
+  not the standalone HTML.
 
 ## Next Step
 
-Give the live preview an "Open in new tab" action backed by the styled HTML
-export (so it is a genuine standalone page at `h1`), and bring the CTA into the
-HTML export so all three artifacts match the preview exactly.
+Wire an "Open in new tab" action on the live preview that serves the standalone
+HTML export (a Blob URL), so the full-screen preview is the genuine `h1`-rooted
+page rather than the in-app `h3`/`h4` component.

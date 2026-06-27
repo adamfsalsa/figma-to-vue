@@ -245,6 +245,7 @@ import { createDefaultVisualTokens } from './types/visualTokens';
 import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
 import { deriveCta } from './utils/cta';
 import { extractVisualTokensFromImage } from './utils/colorExtraction';
+import { generatePageHtml } from './utils/htmlExport';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 import { generateVueSfc } from './utils/vueCodegen';
 
@@ -339,48 +340,9 @@ const generatedBrief = computed(() => {
   ].join('\n');
 });
 
-const generatedPreviewHtml = computed(() => {
-  if (!generatedPage.value) {
-    return '';
-  }
-
-  const page = generatedPage.value;
-  const imageMarkup = page.referencePreview
-    ? `
-      <figure>
-        <img src="${escapeHtml(page.referencePreview)}" alt="Reference used for ${escapeHtml(page.title)}">
-        <figcaption>${escapeHtml(page.referenceName)}</figcaption>
-      </figure>`
-    : '';
-  const sectionsMarkup = page.sections
-    .map(
-      (section) => `
-      <section>
-        <h2>${escapeHtml(section.title)}</h2>
-        <p>${escapeHtml(section.body)}</p>
-      </section>`,
-    )
-    .join('');
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${escapeHtml(page.title)}</title>
-  </head>
-  <body>
-    <main>
-      <header>
-        <p>${escapeHtml(page.kicker)}</p>
-        <h1>${escapeHtml(page.title)}</h1>
-        <p>${escapeHtml(page.summary)}</p>${imageMarkup}
-      </header>
-      ${sectionsMarkup}
-    </main>
-  </body>
-</html>`;
-});
+const generatedPreviewHtml = computed(() =>
+  generatedPage.value ? generatePageHtml(generatedPage.value) : '',
+);
 
 const generatedPlanJson = computed(() => {
   if (!pagePlan.value) {
@@ -608,15 +570,6 @@ function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
     })),
     cta: deriveCta(plan.reference.analysis.ctaStyle),
   };
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 onBeforeUnmount(() => {
