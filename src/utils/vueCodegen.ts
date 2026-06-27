@@ -1,5 +1,7 @@
 import type { PagePlan } from '../types/pagePlan';
+import type { GeneratedPageCta } from '../types/generatedPage';
 import type { LayoutPattern } from '../types/referenceAnalysis';
+import { deriveCta } from './cta';
 
 type LayoutKey = 'single-hero' | 'hero-cards' | 'dashboard-grid' | 'finder-flow';
 
@@ -40,6 +42,8 @@ const LAYOUT_KEYS: Record<LayoutPattern, LayoutKey> = {
 export function generateVueSfc(plan: PagePlan): string {
   const layoutKey = LAYOUT_KEYS[plan.reference.analysis.layoutPattern] ?? 'hero-cards';
   const variant = buildLayoutVariant(layoutKey);
+  const cta = deriveCta(plan.reference.analysis.ctaStyle);
+  const ctaMarkup = buildCtaMarkup(cta);
 
   const sectionsLiteral = plan.sections
     .map((section) => `  { title: ${jsString(section.title)}, body: ${jsString(section.body)} },`)
@@ -71,7 +75,7 @@ ${sectionsLiteral}
       <p class="generated-page__kicker">{{ kicker }}</p>
       <h1>{{ title }}</h1>
       <p class="generated-page__summary">{{ summary }}</p>
-    </header>
+${ctaMarkup}    </header>
 
 ${variant.sectionsMarkup}
   </main>
@@ -113,8 +117,87 @@ ${paletteStyles}  display: grid;
   max-width: 38rem;
   line-height: 1.6;
 }
-${variant.styles}</style>
+${cta.kind === 'none' ? '' : CTA_STYLES}${variant.styles}</style>
 `;
+}
+
+const CTA_STYLES = `
+.generated-page__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 1.5rem;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--token-accent, #4a90e2);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.generated-page__cta--link {
+  min-height: 0;
+  padding: 0;
+  background: none;
+  color: var(--token-accent, #4a90e2);
+}
+
+.generated-page__cta-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.generated-page__cta-form input {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid #e4e7ee;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.generated-page__cta-form .generated-page__cta {
+  margin-top: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+`;
+
+/**
+ * Emits the hero call-to-action markup for the generated SFC, matching the
+ * live preview (GeneratedPagePreview.vue). Labels come from deriveCta and are
+ * fixed strings, so no escaping is required. Indented to sit inside the hero.
+ */
+function buildCtaMarkup(cta: GeneratedPageCta): string {
+  switch (cta.kind) {
+    case 'button':
+      return `      <button type="button" class="generated-page__cta">${cta.label}</button>\n`;
+    case 'link':
+      return `      <a class="generated-page__cta generated-page__cta--link" href="#">${cta.label} →</a>\n`;
+    case 'form':
+      return `      <form class="generated-page__cta-form" @submit.prevent>
+        <label class="visually-hidden" for="generated-page-email">Email address</label>
+        <input id="generated-page-email" type="email" placeholder="you@example.com" />
+        <button type="submit" class="generated-page__cta">${cta.label}</button>
+      </form>\n`;
+    case 'none':
+    default:
+      return '';
+  }
 }
 
 /**

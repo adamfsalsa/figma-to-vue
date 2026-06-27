@@ -47,9 +47,10 @@ Consolidated from the per-doc "Next Step" sections:
 
 - **AI tier is not runtime-verified.** No live billed call has been made from
   this codebase; the first real call on Vercel is the integration smoke test.
-- **CTA parity:** the live preview shows a CTA derived from `ctaStyle`, but the
-  "Copy HTML" export and the generated SFC do **not** include it yet — the three
-  artifacts differ on that one element. (`docs/live-preview.md`)
+- **CTA parity:** the live preview and the generated Vue SFC now share the same
+  `ctaStyle`-derived CTA (`src/utils/cta.ts`). The **"Copy HTML" export still
+  omits it** — bring the CTA into the HTML export to make all three match.
+  (`docs/live-preview.md`)
 - **Standalone preview:** add an "open in new tab" backed by the styled HTML so
   the preview is a real `h1`-rooted page (preview headings are `h3`/`h4` to fit
   the host outline).

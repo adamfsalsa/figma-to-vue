@@ -3,7 +3,7 @@ import { buildPagePlan } from '../src/utils/pagePlan';
 import { createDefaultReferenceAnalysis } from '../src/types/referenceAnalysis';
 import type { VisualTokens } from '../src/types/visualTokens';
 
-import type { LayoutPattern } from '../src/types/referenceAnalysis';
+import type { CtaStyle, LayoutPattern } from '../src/types/referenceAnalysis';
 
 function planWith(visualTokens?: VisualTokens) {
   return buildPagePlan({
@@ -104,6 +104,42 @@ describe('generateVueSfc', () => {
       expect(sfc).toContain('v-for="section in sections"');
       expect(sfc).toContain('<h2>{{ section.title }}</h2>');
     }
+  });
+
+  it('includes a CTA in the generated SFC matching the analyzer ctaStyle', () => {
+    const cases: Array<[CtaStyle, RegExp]> = [
+      ['Button-led', /<button type="button" class="generated-page__cta">Get started<\/button>/],
+      ['Text-link', /<a class="generated-page__cta generated-page__cta--link" href="#">Learn more/],
+      ['Form-first', /<form class="generated-page__cta-form"/],
+    ];
+
+    for (const [ctaStyle, pattern] of cases) {
+      const plan = buildPagePlan({
+        analysis: { ...createDefaultReferenceAnalysis(), ctaStyle },
+        density: 'Comfortable',
+        notes: '',
+        pageType: 'Landing page',
+        referenceName: 'reference.png',
+        tone: 'Calm',
+      });
+      const sfc = generateVueSfc(plan);
+      expect(sfc).toMatch(pattern);
+      expect(sfc).toContain('.generated-page__cta {');
+    }
+  });
+
+  it('omits the CTA and its styles when ctaStyle is None visible', () => {
+    const plan = buildPagePlan({
+      analysis: { ...createDefaultReferenceAnalysis(), ctaStyle: 'None visible' },
+      density: 'Comfortable',
+      notes: '',
+      pageType: 'Landing page',
+      referenceName: 'reference.png',
+      tone: 'Calm',
+    });
+    const sfc = generateVueSfc(plan);
+
+    expect(sfc).not.toContain('generated-page__cta');
   });
 
   it('escapes quotes and newlines in content so the TS literal cannot break out', () => {
