@@ -47,13 +47,11 @@ Consolidated from the per-doc "Next Step" sections:
 
 - **AI tier is not runtime-verified.** No live billed call has been made from
   this codebase; the first real call on Vercel is the integration smoke test.
-- **CTA parity:** the live preview and the generated Vue SFC now share the same
-  `ctaStyle`-derived CTA (`src/utils/cta.ts`). The **"Copy HTML" export still
-  omits it** — bring the CTA into the HTML export to make all three match.
-  (`docs/live-preview.md`)
-- **Standalone preview:** add an "open in new tab" backed by the styled HTML so
-  the preview is a real `h1`-rooted page (preview headings are `h3`/`h4` to fit
-  the host outline).
+- **Standalone preview:** the styled HTML export (`src/utils/htmlExport.ts`) is
+  now a real `h1`-rooted page with the CTA, but the live preview overlay still
+  renders the in-app `h3`/`h4` component. Add an "open in new tab" action that
+  serves the HTML export via a Blob URL so the full-screen view is the genuine
+  standalone page. (`docs/live-preview.md`)
 - **Richer SFC:** child components for repeated structures; deepen the
   `finder-flow` variant toward the accessible native-radio pattern in
   `src/components/RideFinder.vue`. (`docs/vue-codegen.md`)
