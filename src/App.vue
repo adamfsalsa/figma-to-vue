@@ -117,15 +117,22 @@
           </div>
         </section>
 
-        <section class="panel panel--brief" aria-labelledby="brief-title">
+      </div>
+
+      <details class="disclosure">
+        <summary class="disclosure__summary">
+          <span class="disclosure__title">Implementation brief</span>
+          <span class="disclosure__meta">plain-text summary for review</span>
+        </summary>
+        <div class="disclosure__body">
           <div class="panel__title-row">
-            <h3 id="brief-title">3. Pipeline brief</h3>
+            <h3 id="brief-title">Pipeline brief</h3>
             <button type="button" @click="copyBrief">Copy brief</button>
           </div>
           <pre aria-label="Generated implementation brief">{{ generatedBrief }}</pre>
           <p class="copy-status" role="status">{{ briefCopyStatus }}</p>
-        </section>
-      </div>
+        </div>
+      </details>
     </section>
 
     <ReferenceAnalyzer
@@ -138,63 +145,66 @@
       <div class="preview-lab__intro">
         <div>
           <p class="eyebrow">One-shot output</p>
-          <h2 id="preview-title" ref="previewTitleRef" tabindex="-1">Generated page preview</h2>
-          <p>
-            This local generator turns the current brief into a static one-page
-            composition, a copyable HTML export, and a real Vue 3 single-file
-            component. It is deterministic, which keeps the output reviewable
-            and diffable.
+          <h2 id="preview-title" ref="previewTitleRef" tabindex="-1">Generated page</h2>
+          <p class="preview-lab__lede">
+            Turn the current brief into a live page you can scroll and click —
+            plus copyable Vue, HTML, and JSON.
           </p>
         </div>
         <div class="preview-actions">
-          <button type="button" @click="generateJsonPlan">
-            Generate JSON plan
-          </button>
-          <button class="button-primary" type="button" @click="generatePagePreview">
-            Generate preview
-          </button>
           <button class="button-primary" type="button" @click="openLivePreview">
             ▶ Preview page
           </button>
-          <button type="button" :disabled="!pagePlan" @click="copyJsonPlan">
-            Copy JSON
-          </button>
-          <button type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
-            Copy HTML
-          </button>
-          <button type="button" :disabled="!pagePlan" @click="copyVueComponent">
-            Copy Vue component
+          <button class="button-ghost" type="button" @click="generatePagePreview">
+            Generate inline
           </button>
         </div>
       </div>
 
       <p class="copy-status" role="status">{{ previewStatus }}</p>
 
-      <section class="plan-layer" aria-labelledby="plan-title">
-        <div class="panel__title-row">
-          <h3 id="plan-title">4. JSON page plan</h3>
-          <p>Typed contract between the assistant and renderer</p>
-        </div>
-        <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
-      </section>
-
-      <section class="plan-layer" aria-labelledby="sfc-title">
-        <div class="panel__title-row">
-          <h3 id="sfc-title">5. Vue component (.vue)</h3>
-          <p>One-shot Vue 3 SFC generated from the plan</p>
-        </div>
-        <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
-      </section>
-
       <GeneratedPagePreview v-if="generatedPage" :page="generatedPage" />
 
       <div v-else class="preview-placeholder">
         <h3>No page generated yet</h3>
         <p>
-          Add a reference or adjust the formatting answers, then generate a
-          one-page preview from the current brief.
+          Add a reference or adjust the formatting answers, then preview the
+          one-page result.
         </p>
       </div>
+
+      <details class="disclosure">
+        <summary class="disclosure__summary">
+          <span class="disclosure__title">Developer output</span>
+          <span class="disclosure__meta">JSON plan · Vue component · HTML</span>
+        </summary>
+        <div class="disclosure__body">
+          <div class="code-toolbar">
+            <button class="button-ghost" type="button" @click="generateJsonPlan">
+              Generate JSON plan
+            </button>
+            <button class="button-ghost" type="button" :disabled="!pagePlan" @click="copyJsonPlan">
+              Copy JSON
+            </button>
+            <button class="button-ghost" type="button" :disabled="!generatedPage" @click="copyPreviewHtml">
+              Copy HTML
+            </button>
+            <button class="button-ghost" type="button" :disabled="!pagePlan" @click="copyVueComponent">
+              Copy Vue component
+            </button>
+          </div>
+
+          <div class="code-block">
+            <p class="code-block__label" id="plan-title">JSON page plan</p>
+            <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
+          </div>
+
+          <div class="code-block">
+            <p class="code-block__label" id="sfc-title">Vue component (.vue)</p>
+            <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
+          </div>
+        </div>
+      </details>
     </section>
 
     <section class="delivery-lane" aria-labelledby="delivery-title">

@@ -46,3 +46,7 @@ The one-shot output now includes a real Vue 3 single-file component, not just an
 ## 11. Live Preview
 
 A "▶ Preview page" button opens the generated page in a one-click, full-screen, scrollable overlay so a non-coder can see and interact with the result in real time, separate from the code panels. The page carries an interactive call-to-action that reflects the observed `ctaStyle` (button / link / email form / none). The overlay is an accessible modal dialog (focus trap to the close button, Escape to close, focus restored to the trigger) and reuses the shared `GeneratedPagePreview.vue` so the inline and full-screen views never drift. See `docs/live-preview.md`.
+
+## 12. UI Cleanup
+
+A scan-first redesign applying progressive disclosure: the three always-visible code walls (implementation brief, JSON plan, Vue SFC) now collapse into closed-by-default `<details>` disclosures, the output area leads with one primary action (`▶ Preview page`) and the rendered preview as the focal point, and the shell uses calmer cards (soft shadow, larger radius), a two-column intake, and a quieted delivery footer. Purely presentational — no behavior or artifact change; all 44 tests (incl. axe) still pass.

@@ -15,7 +15,7 @@ describe('App pipeline console', () => {
       'No JSON plan generated yet',
     );
     expect(screen.getByRole('button', { name: 'Generate JSON plan' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate preview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate inline' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Vue component' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'No page generated yet' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'UI to Git to deployed page' })).toBeInTheDocument();
@@ -122,9 +122,9 @@ describe('App pipeline console', () => {
     await user.clear(screen.getByLabelText('UI tone'));
     await user.type(screen.getByLabelText('UI tone'), 'Sharp and minimal');
     await user.type(screen.getByLabelText('Formatting notes'), 'Lead with a narrow hero and clear proof points.');
-    await user.click(screen.getByRole('button', { name: 'Generate preview' }));
+    await user.click(screen.getByRole('button', { name: 'Generate inline' }));
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Generated page preview' })).toHaveFocus();
+    expect(screen.getByRole('heading', { level: 2, name: 'Generated page' })).toHaveFocus();
     expect(screen.getByLabelText('Generated JSON page plan')).toHaveTextContent(
       '"schemaVersion": "figma-to-vue.page-plan.v1"',
     );
