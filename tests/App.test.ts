@@ -130,6 +130,61 @@ describe('App pipeline console', () => {
     );
   });
 
+  it('imports a Figma frame into the analyzer and reference preview', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        document: {
+          fileName: 'Commerce file',
+          nodeName: 'Checkout hero',
+          nodeId: '1:2',
+          nodeType: 'FRAME',
+          previewUrl: 'https://figma.example/frame.png',
+          analysis: {
+            ctaStyle: 'Button-led',
+            heroComposition: 'Centered hero',
+            layoutPattern: 'Single hero',
+            mediaEmphasis: 'Supporting',
+            sectionCount: 2,
+            visualNotes: 'Imported from structured Figma layers.',
+          },
+          content: {
+            kicker: 'Checkout',
+            title: 'Finish your order',
+            summary: 'A structured import from the selected frame.',
+          },
+          structure: {
+            autoLayout: 'VERTICAL',
+            componentCount: 2,
+            layerCount: 18,
+            textLayerCount: 6,
+          },
+          visualTokens: {
+            palette: ['#112233'],
+            averageLuminance: 0.12,
+            isDark: true,
+            source: 'figma-document',
+          },
+        },
+      }),
+    } as Response);
+    render(App);
+
+    await user.type(
+      screen.getByLabelText('Figma file or frame URL'),
+      'https://www.figma.com/design/ABC123/Commerce?node-id=1-2',
+    );
+    await user.click(screen.getByRole('button', { name: 'Import from Figma' }));
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/figma', expect.objectContaining({ method: 'POST' }));
+    expect(await screen.findAllByText('Commerce file — Checkout hero')).toHaveLength(2);
+    expect(screen.getByLabelText('Layout pattern')).toHaveValue('Single hero');
+    expect(screen.getByText(/Imported 18 layers and 6 text layers/)).toBeInTheDocument();
+    fetchMock.mockRestore();
+  });
+
   it('generates a static one-page preview from the current brief', async () => {
     const user = userEvent.setup();
     render(App);

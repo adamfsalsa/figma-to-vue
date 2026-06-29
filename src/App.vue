@@ -17,7 +17,7 @@
           <h2 id="pipeline-title">Reference intake</h2>
         </div>
         <p class="pipeline-board__note">
-          Files stay in your browser unless you explicitly choose Enhance with AI.
+          Uploaded images stay local unless you choose Enhance with AI. Figma URLs are sent only when you choose Import.
         </p>
       </div>
 
@@ -44,6 +44,24 @@
             <span class="drop-zone__hint">PNG, JPG, WebP, or SVG</span>
           </label>
 
+          <form class="figma-import" @submit.prevent="importFigmaReference">
+            <p class="figma-import__divider"><span>or import a live frame</span></p>
+            <div class="field-group">
+              <label for="figmaUrl">Figma file or frame URL</label>
+              <input
+                id="figmaUrl"
+                v-model.trim="figmaUrl"
+                type="url"
+                placeholder="https://www.figma.com/design/…?node-id=…"
+                autocomplete="off"
+              />
+            </div>
+            <button type="submit" :disabled="figmaImportPending || !figmaUrl">
+              {{ figmaImportPending ? 'Reading Figma…' : 'Import from Figma' }}
+            </button>
+            <p class="copy-status" role="status">{{ figmaImportStatus }}</p>
+          </form>
+
           <figure v-if="referencePreview" class="reference-preview">
             <img :src="referencePreview" :alt="`Preview of ${referenceName}`" />
             <figcaption>{{ referenceName }}</figcaption>
@@ -53,7 +71,9 @@
           </p>
 
           <div v-if="visualTokens.palette.length > 0" class="palette-preview">
-            <p class="palette-preview__label" id="palette-preview-label">Extracted palette (local, no AI)</p>
+            <p class="palette-preview__label" id="palette-preview-label">
+              {{ visualTokens.source === 'figma-document' ? 'Extracted palette (Figma fills)' : 'Extracted palette (local, no AI)' }}
+            </p>
             <ul class="palette-preview__swatches" aria-labelledby="palette-preview-label">
               <li
                 v-for="color in visualTokens.palette"
@@ -64,11 +84,11 @@
               ></li>
             </ul>
             <p class="visually-hidden">
-              Dominant colors detected in the reference image: {{ visualTokens.palette.join(', ') }}.
+              Dominant colors detected in the reference: {{ visualTokens.palette.join(', ') }}.
             </p>
           </div>
 
-          <div v-if="referencePreview" class="ai-enhance">
+          <div v-if="referenceFile" class="ai-enhance">
             <button type="button" :disabled="aiAnalysisPending" @click="enhanceWithAi">
               {{ aiAnalysisPending ? 'Asking AI…' : 'Enhance with AI (optional)' }}
             </button>
@@ -255,6 +275,7 @@ import { createDefaultVisualTokens } from './types/visualTokens';
 import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
 import { deriveCta } from './utils/cta';
 import { extractVisualTokensFromImage } from './utils/colorExtraction';
+import { requestFigmaImport } from './utils/figmaImport';
 import { generatePageHtml } from './utils/htmlExport';
 import { buildPagePlan, serializePagePlan } from './utils/pagePlan';
 import { generateVueSfc } from './utils/vueCodegen';
@@ -308,6 +329,9 @@ const visualTokens = ref<VisualTokens>(createDefaultVisualTokens());
 const aiAnalysisStatus = ref('');
 const aiAnalysisPending = ref(false);
 const aiContent = ref<GeneratedContent | null>(null);
+const figmaUrl = ref('');
+const figmaImportStatus = ref('');
+const figmaImportPending = ref(false);
 const briefCopyStatus = ref('');
 const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
@@ -397,17 +421,59 @@ function handleDrop(event: DragEvent) {
 function setReference(file: File) {
   referenceName.value = file.name;
   referenceFile.value = file;
-  if (referencePreview.value) {
-    URL.revokeObjectURL(referencePreview.value);
-  }
+  revokeLocalPreview();
   referencePreview.value = URL.createObjectURL(file);
+  referenceAnalysis.value = createDefaultReferenceAnalysis();
   visualTokens.value = createDefaultVisualTokens();
   aiAnalysisStatus.value = '';
   aiContent.value = null;
+  figmaUrl.value = '';
+  figmaImportStatus.value = '';
+  clearGeneratedOutputs();
 
   void extractVisualTokensFromImage(file).then((tokens) => {
     visualTokens.value = tokens;
   });
+}
+
+async function importFigmaReference() {
+  if (!figmaUrl.value || figmaImportPending.value) return;
+
+  figmaImportPending.value = true;
+  figmaImportStatus.value = 'Reading the selected Figma document…';
+  try {
+    const result = await requestFigmaImport(figmaUrl.value);
+    if (!result.ok) {
+      figmaImportStatus.value = result.message;
+      return;
+    }
+
+    const imported = result.document;
+    revokeLocalPreview();
+    referenceName.value = `${imported.fileName} — ${imported.nodeName}`;
+    referenceFile.value = null;
+    referencePreview.value = imported.previewUrl;
+    referenceAnalysis.value = imported.analysis;
+    visualTokens.value = imported.visualTokens;
+    aiContent.value = imported.content;
+    aiAnalysisStatus.value = '';
+    clearGeneratedOutputs();
+    figmaImportStatus.value = `Imported ${imported.structure.layerCount} layers and ${imported.structure.textLayerCount} text layers from “${imported.nodeName}”.`;
+  } finally {
+    figmaImportPending.value = false;
+  }
+}
+
+function clearGeneratedOutputs() {
+  pagePlan.value = null;
+  generatedPage.value = null;
+  previewStatus.value = '';
+}
+
+function revokeLocalPreview() {
+  if (referencePreview.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(referencePreview.value);
+  }
 }
 
 /**
@@ -586,9 +652,7 @@ function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
 }
 
 onBeforeUnmount(() => {
-  if (referencePreview.value) {
-    URL.revokeObjectURL(referencePreview.value);
-  }
+  revokeLocalPreview();
   document.removeEventListener('keydown', handlePreviewKeydown);
 });
 </script>

@@ -5,6 +5,14 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Added — OpenAI Codex (2026-06-29)
+
+- Accept Figma design/file/frame URLs and read their structured node trees
+  through a server-only Figma REST token.
+- Extract text, section candidates, component counts, auto-layout direction,
+  solid-fill colors, inferred page analysis, and a rendered frame preview.
+- Keep screenshot upload and human-guided analysis as token-free fallbacks.
+
 ### Fixed — OpenAI Codex (2026-06-29)
 
 - Reset Product-finder preview selection and result state whenever a newly

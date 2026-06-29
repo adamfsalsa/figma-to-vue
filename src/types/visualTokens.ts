@@ -2,7 +2,7 @@ export interface VisualTokens {
   palette: string[];
   averageLuminance: number;
   isDark: boolean;
-  source: 'extracted-from-reference' | 'placeholder';
+  source: 'extracted-from-reference' | 'figma-document' | 'placeholder';
 }
 
 export function createDefaultVisualTokens(): VisualTokens {

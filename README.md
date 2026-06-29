@@ -10,6 +10,8 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 
 - Figma-to-code planning for component boundaries, state, and design tokens
 - Drag-and-drop reference intake for screenshots or exported frames
+- Server-side Figma file/frame URL intake with structured layer, text,
+  component, auto-layout, fill-color, and rendered-preview extraction
 - Human-guided reference analyzer for visible design observations
 - Local, no-LLM color/token extraction from the uploaded reference image
 - Optional "Enhance with AI" tier: a key-safe Vercel proxy that calls `claude-sonnet-4-6`, gated behind durable rate limiting and a prepaid spend cap (dormant until configured)
@@ -29,12 +31,17 @@ For current state, what's done, how to enable the optional AI tier, and the open
 follow-ups, see **[docs/STATUS.md](docs/STATUS.md)** — the single entry point for
 picking this up.
 
+Figma REST setup and security boundaries are documented in
+**[docs/figma-import.md](docs/figma-import.md)**.
+
 ## Scope Boundary
 
-The current application reads exported images, not native Figma documents. It
-does not call the Figma API, inspect layers/components/variables, write Git
-commits, or deploy generated output. JSON, HTML, and Vue output are copied to
-the clipboard for human review.
+The application can read a shared Figma file or frame through the server-side
+REST integration when `FIGMA_ACCESS_TOKEN` is configured. It extracts the node
+tree and common layout/content signals, but it does not yet import Figma
+variables or reproduce every constraint and prototype interaction. It does not
+write Git commits or deploy generated output; JSON, HTML, and Vue output are
+copied to the clipboard for human review.
 
 ## Work Attribution
 
@@ -45,14 +52,15 @@ commit trailer so parallel agent work remains distinguishable.
 ## Pipeline
 
 1. Design intake captures the reference image or exported frame.
-2. Human-guided analysis records visible layout and composition decisions.
-3. Basic formatting questions shape the implementation brief.
-4. A constrained JSON page plan captures the render contract.
-5. Token extraction reads a real color palette and luminance directly from the uploaded image pixels (local, no LLM), feeding CSS custom properties.
-6. A deterministic generator creates a static one-page preview from the plan.
-7. Vue implementation turns the plan into semantic components.
-8. Git records reviewed code, docs, tests, and pipeline decisions.
-9. Deployment publishes the final one-page build through Vercel or a similar static host.
+2. Optional Figma URL intake reads the selected frame's structured node tree.
+3. Human-guided analysis records or corrects layout and composition decisions.
+4. Basic formatting questions shape the implementation brief.
+5. A constrained JSON page plan captures the render contract.
+6. Token extraction reads colors from image pixels or structured Figma fills.
+7. A deterministic generator creates a static one-page preview from the plan.
+8. Vue implementation turns the plan into semantic components.
+9. Git records reviewed code, docs, tests, and pipeline decisions.
+10. Deployment publishes the final one-page build through Vercel or a similar static host.
 
 ## Tech Stack
 
