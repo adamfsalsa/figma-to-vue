@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import GeneratedPagePreview from '../src/components/GeneratedPagePreview.vue';
 import type { GeneratedPage, GeneratedPageCta } from '../src/types/generatedPage';
 
@@ -69,6 +70,30 @@ describe('GeneratedPagePreview', () => {
     expect(select.tagName).toBe('SELECT');
     expect(screen.getByRole('button', { name: 'Show results' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Design signals' })).toBeInTheDocument();
+  });
+
+  it('resets finder state when a newly generated page replaces the current page', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(GeneratedPagePreview, {
+      props: { page: makePage({ layoutPattern: 'Product finder flow' }) },
+    });
+
+    await user.selectOptions(screen.getByLabelText('What are you looking for?'), 'Implementation plan');
+    await user.click(screen.getByRole('button', { name: 'Show results' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Showing: Implementation plan');
+
+    await rerender({
+      page: makePage({
+        layoutPattern: 'Product finder flow',
+        sections: [
+          { title: 'New first choice', body: 'Fresh content.' },
+          { title: 'New second choice', body: 'More fresh content.' },
+        ],
+      }),
+    });
+
+    expect(screen.getByLabelText('What are you looking for?')).toHaveValue('New first choice');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('omits the finder dropdown for non-finder layouts', () => {

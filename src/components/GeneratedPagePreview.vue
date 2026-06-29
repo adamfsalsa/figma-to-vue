@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { GeneratedPage } from '../types/generatedPage';
 
 const props = defineProps<{ page: GeneratedPage }>();
@@ -91,6 +91,17 @@ const showFinder = computed(() => props.page.layoutPattern === 'Product finder f
 const finderOptions = computed(() => props.page.sections.map((section) => section.title));
 const finderChoice = ref(props.page.sections[0]?.title ?? '');
 const finderSubmitted = ref(false);
+
+// The parent reuses this component when a new page is generated. Reset local
+// interaction state so a choice/result from the previous page cannot leak into
+// the new preview.
+watch(
+  () => props.page,
+  (page) => {
+    finderChoice.value = page.sections[0]?.title ?? '';
+    finderSubmitted.value = false;
+  },
+);
 
 const paletteStyle = computed(() => {
   const palette = props.page.palette;

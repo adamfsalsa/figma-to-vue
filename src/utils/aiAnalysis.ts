@@ -17,11 +17,9 @@ const REQUEST_TIMEOUT_MS = 8000;
 
 /**
  * Calls the optional /api/analyze proxy (see api/analyze.ts). The provider
- * call behind that endpoint is currently stubbed, so this will normally
- * resolve to `{ ok: false, reason: 'not_configured', ... }` until a provider
- * is wired up — that is expected, not a bug. Callers should always have a
- * fallback path (the local, no-LLM analyzer) ready to use on any `ok: false`
- * result, regardless of `reason`.
+ * call behind that endpoint is optional and requires server-side Anthropic and
+ * Upstash configuration. Callers always retain the local, no-LLM fallback for
+ * any unsuccessful response, regardless of the returned reason.
  */
 export async function requestAiAnalysis(imageDataUrl: string): Promise<AiAnalysisResult> {
   const controller = new AbortController();
