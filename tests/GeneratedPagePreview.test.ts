@@ -5,6 +5,7 @@ import type { GeneratedPage, GeneratedPageCta } from '../src/types/generatedPage
 function makePage(overrides: Partial<GeneratedPage> = {}): GeneratedPage {
   return {
     densityKey: 'comfortable',
+    layoutPattern: 'Hero plus feature cards',
     kicker: 'Concept',
     title: 'Generated title',
     summary: 'A short summary line.',
@@ -56,6 +57,24 @@ describe('GeneratedPagePreview', () => {
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('renders an interactive dropdown for a Product finder flow page', () => {
+    render(GeneratedPagePreview, {
+      props: { page: makePage({ layoutPattern: 'Product finder flow' }) },
+    });
+
+    const select = screen.getByLabelText('What are you looking for?');
+    expect(select).toBeInTheDocument();
+    expect(select.tagName).toBe('SELECT');
+    expect(screen.getByRole('button', { name: 'Show results' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Design signals' })).toBeInTheDocument();
+  });
+
+  it('omits the finder dropdown for non-finder layouts', () => {
+    render(GeneratedPagePreview, { props: { page: makePage() } });
+
+    expect(screen.queryByLabelText('What are you looking for?')).not.toBeInTheDocument();
   });
 
   it('applies an extracted palette as CSS custom properties', () => {

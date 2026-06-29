@@ -246,7 +246,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 import ReferenceAnalyzer from './components/ReferenceAnalyzer.vue';
 import GeneratedPagePreview from './components/GeneratedPagePreview.vue';
-import type { PagePlan, VisualDensity } from './types/pagePlan';
+import type { GeneratedContent, PagePlan, VisualDensity } from './types/pagePlan';
 import type { GeneratedPage } from './types/generatedPage';
 import type { ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
@@ -307,6 +307,7 @@ const referenceAnalysis = ref<ReferenceAnalysis>(createDefaultReferenceAnalysis(
 const visualTokens = ref<VisualTokens>(createDefaultVisualTokens());
 const aiAnalysisStatus = ref('');
 const aiAnalysisPending = ref(false);
+const aiContent = ref<GeneratedContent | null>(null);
 const briefCopyStatus = ref('');
 const pagePlan = ref<PagePlan | null>(null);
 const generatedPage = ref<GeneratedPage | null>(null);
@@ -402,6 +403,7 @@ function setReference(file: File) {
   referencePreview.value = URL.createObjectURL(file);
   visualTokens.value = createDefaultVisualTokens();
   aiAnalysisStatus.value = '';
+  aiContent.value = null;
 
   void extractVisualTokensFromImage(file).then((tokens) => {
     visualTokens.value = tokens;
@@ -430,7 +432,10 @@ async function enhanceWithAi() {
 
     if (result.ok) {
       referenceAnalysis.value = { ...referenceAnalysis.value, ...result.analysis };
-      aiAnalysisStatus.value = 'AI analysis applied. Review the fields below before continuing.';
+      aiContent.value = result.content ?? null;
+      aiAnalysisStatus.value = result.content
+        ? 'AI analysis and page copy applied. Generate a preview to see it.'
+        : 'AI analysis applied. Review the fields below before continuing.';
     } else {
       aiAnalysisStatus.value = result.message;
     }
@@ -462,6 +467,7 @@ function generateJsonPlan() {
     referenceName: referencePreview.value ? referenceName.value : null,
     tone: formatting.tone,
     visualTokens: visualTokens.value,
+    content: aiContent.value ?? undefined,
   });
 
   previewStatus.value = 'Generated constrained JSON page plan.';
@@ -568,6 +574,7 @@ async function copyVueComponent() {
 function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
   return {
     densityKey: plan.page.densityKey,
+    layoutPattern: plan.reference.analysis.layoutPattern,
     kicker: plan.page.kicker,
     palette: plan.tokens.palette,
     referenceName: plan.reference.name ?? 'the uploaded reference placeholder',

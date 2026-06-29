@@ -2,8 +2,10 @@
 
 This milestone splits "analyze the reference image" into two tiers: a real,
 free, local analyzer that always works, and an optional LLM-backed analyzer
-(claude-haiku-4-5) that is fully implemented but stays dormant until an API key
-and rate-limit store are configured. The app is safe and useful with neither.
+(claude-sonnet-4-6) that classifies the layout **and generates the page copy
+from the image** — faithful when the reference is clear, invented when it is
+vague. It is fully implemented but stays dormant until an API key and rate-limit
+store are configured. The app is safe and useful with neither.
 
 ## What Works Today (No LLM, No Key, $0)
 
@@ -45,9 +47,9 @@ in by hand: it is the honest option until a vision-capable model is wired up.
   no key, no proxy.
 - **Tier 2 (optional, dormant until configured):** an "Enhance with AI" action
   (`src/utils/aiAnalysis.ts`, wired into `src/App.vue`) that POSTs the
-  reference image to `/api/analyze` and merges the response into
-  `referenceAnalysis` on success. The provider call is implemented (Haiku) but
-  returns `not_configured` until the env vars are set — see below.
+  reference image to `/api/analyze` and merges both the analysis and the
+  generated `content` into the plan on success. The provider call is implemented
+  (Sonnet) but returns `not_configured` until the env vars are set — see below.
 
 Tier 2 is designed to fail closed: any non-success response (`not_configured`,
 `rate_limited`, `provider_error`, a timeout, a network error) just leaves the
@@ -64,12 +66,18 @@ Implemented now:
 
 - Request validation (POST only, body shape, image size cap, supported media
   types).
-- A real **`claude-haiku-4-5`** vision call: the image block is built from the
-  uploaded data URL, and the model is asked for a JSON object whose fields and
-  allowed values mirror `ReferenceAnalysis`. The response is parsed and every
-  field is validated against the known enums — anything off-list is dropped,
-  so a malformed model response degrades to a smaller `Partial`, never an
-  invalid one. `max_tokens` is capped low (512) to bound output cost.
+- A real **`claude-sonnet-4-6`** vision call. The model returns a JSON object
+  that (a) classifies the layout into the `ReferenceAnalysis` enums and (b)
+  **generates the page copy** — kicker, title, summary, and 2–4 sections —
+  under a `content` key. The prompt instructs it to read and adapt real text
+  when the reference is a clean mockup/Figma frame, and to **invent coherent,
+  premium copy when the reference is vague** (a sketch or scribble), always
+  returning complete content. Both halves are validated/sanitized server-side
+  (enums dropped if off-list; content trimmed/capped), so a malformed response
+  degrades gracefully. `max_tokens` is 1536 to leave room for the generated copy.
+- The generated `content` flows into `buildPagePlan` as an override, so the
+  rendered page (preview, Vue SFC, HTML) shows copy derived from the image
+  instead of the deterministic templated placeholder text.
 - Durable per-IP and global-daily rate limiting backed by Upstash Redis (see
   below).
 - A structured `{ ok, reason, message }` response contract the frontend
@@ -126,11 +134,15 @@ the spend ceiling. The hard ceiling comes from the provider account:
    back to the free local analyzer. You cannot go negative or exceed what you
    loaded.
 
-Cost math (Haiku 4.5, $1/MTok in, $5/MTok out): a downscaled-image →
-small-JSON call is ≈ $0.0035, so $5 ≈ ~1,400 analyses. Two code-side levers
-keep each call's cost predictable: `max_tokens: 512` in `api/analyze.ts`, and
-client-side image downscaling to a 768px max edge before upload
-(`fileToDownscaledDataUrl` in `src/utils/aiAnalysis.ts`).
+Cost math (Sonnet 4.6, $3/MTok in, $15/MTok out): because the call now also
+generates page copy (not just classifies), each "Enhance with AI" generation is
+roughly **$0.02–0.05**, so **$5 ≈ 100–250 generations** before it falls back to
+the free local analyzer. Two code-side levers bound per-call cost: `max_tokens:
+1536` in `api/analyze.ts`, and client-side image downscaling to a 768px max edge
+before upload (`fileToDownscaledDataUrl` in `src/utils/aiAnalysis.ts`).
+
+> The detailed, click-by-click operator steps for adding the key live in
+> **`docs/setup-ai.md`**.
 
 ## Configuration Checklist (Operator)
 
@@ -159,4 +171,5 @@ Wire the four configuration items above in Vercel and run the smoke test. No
 code change is required to enable the feature — `src/utils/aiAnalysis.ts` and
 the "Enhance with AI" button in `src/App.vue` already handle the success path
 and every failure shape, and `callVisionProvider()` in `api/analyze.ts` is the
-implemented Haiku call.
+implemented Sonnet call. The detailed click-by-click setup is in
+`docs/setup-ai.md`.

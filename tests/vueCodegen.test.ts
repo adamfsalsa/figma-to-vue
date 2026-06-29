@@ -142,6 +142,22 @@ describe('generateVueSfc', () => {
     expect(sfc).not.toContain('generated-page__cta');
   });
 
+  it('emits an interactive ref-backed dropdown for a finder-flow SFC', () => {
+    const sfc = generateVueSfc(planForLayout('Product finder flow'));
+
+    expect(sfc).toContain("import { ref } from 'vue';");
+    expect(sfc).toContain('const finderChoice = ref(');
+    expect(sfc).toContain('<select id="finder-choice" v-model="finderChoice">');
+    expect(sfc).toContain('Show results');
+  });
+
+  it('does not add finder state to non-finder SFCs', () => {
+    const sfc = generateVueSfc(planForLayout('Hero plus feature cards'));
+
+    expect(sfc).not.toContain("import { ref } from 'vue';");
+    expect(sfc).not.toContain('finderChoice');
+  });
+
   it('escapes quotes and newlines in content so the TS literal cannot break out', () => {
     const plan = planWith();
     plan.page.title = "It's a \"bold\" title\nwith a newline";

@@ -36,6 +36,7 @@ import type {
   MediaEmphasis,
   ReferenceAnalysis,
 } from '../src/types/referenceAnalysis';
+import type { GeneratedContent } from '../src/types/pagePlan';
 
 interface ApiRequest {
   method?: string;
@@ -56,6 +57,7 @@ interface AnalyzeRequestBody {
 type AnalyzeSuccessResponse = {
   ok: true;
   analysis: Partial<ReferenceAnalysis>;
+  content?: GeneratedContent;
 };
 
 type AnalyzeErrorResponse = {
@@ -135,7 +137,7 @@ function resolveClientIp(req: ApiRequest): string {
 }
 
 // ---------------------------------------------------------------------------
-// Provider call — claude-haiku-4-5 vision → validated Partial<ReferenceAnalysis>
+// Provider call — claude-sonnet-4-6 vision → validated analysis + generated content
 // ---------------------------------------------------------------------------
 
 const SUPPORTED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -152,6 +154,22 @@ const ANALYSIS_SYSTEM_PROMPT = [
   '- "sectionCount": an integer from 1 to 6 (distinct content sections you see)',
   `- "ctaStyle": one of ${JSON.stringify(CTA_STYLES)}`,
   '- "visualNotes": one short sentence of plain-text translation guidance',
+  '',
+  'ALSO generate the page copy under a "content" object so a premium one-page',
+  'website can be built from it:',
+  '- "content.kicker": a short eyebrow label (2-5 words)',
+  '- "content.title": a punchy hero headline',
+  '- "content.summary": one or two sentences of supporting subtext',
+  '- "content.sections": an array of 2 to 4 objects, each {"title", "body"},',
+  '  where body is one or two sentences',
+  '',
+  'Content rules:',
+  '- If the reference clearly contains real text (a polished mockup or exported',
+  '  Figma frame), READ and adapt that actual copy faithfully.',
+  '- If the reference is vague (a rough sketch, scribbles, a wireframe), INVENT',
+  '  coherent, plausible, premium copy that fits the apparent product and intent.',
+  '- Always return complete, non-empty content. Never leave fields blank and',
+  '  never refuse — produce the best premium page you can from whatever is shown.',
 ].join('\n');
 
 function parseImageDataUrl(dataUrl: string): { mediaType: string; data: string } | null {
@@ -192,6 +210,40 @@ function sanitizeAnalysis(raw: unknown): Partial<ReferenceAnalysis> {
   return result;
 }
 
+function sanitizeContent(raw: unknown): GeneratedContent | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined;
+  }
+
+  const candidate = raw as Record<string, unknown>;
+  const content: GeneratedContent = {};
+
+  if (typeof candidate.kicker === 'string' && candidate.kicker.trim()) {
+    content.kicker = candidate.kicker.trim().slice(0, 80);
+  }
+  if (typeof candidate.title === 'string' && candidate.title.trim()) {
+    content.title = candidate.title.trim().slice(0, 160);
+  }
+  if (typeof candidate.summary === 'string' && candidate.summary.trim()) {
+    content.summary = candidate.summary.trim().slice(0, 400);
+  }
+  if (Array.isArray(candidate.sections)) {
+    const sections = candidate.sections
+      .filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null)
+      .map((entry) => ({
+        title: typeof entry.title === 'string' ? entry.title.trim().slice(0, 120) : '',
+        body: typeof entry.body === 'string' ? entry.body.trim().slice(0, 400) : '',
+      }))
+      .filter((entry) => entry.title || entry.body)
+      .slice(0, 4);
+    if (sections.length > 0) {
+      content.sections = sections;
+    }
+  }
+
+  return Object.keys(content).length > 0 ? content : undefined;
+}
+
 function extractJsonText(text: string): unknown {
   const trimmed = text.trim();
   const start = trimmed.indexOf('{');
@@ -206,7 +258,12 @@ function extractJsonText(text: string): unknown {
   }
 }
 
-async function callVisionProvider(imageDataUrl: string): Promise<Partial<ReferenceAnalysis>> {
+interface ProviderResult {
+  analysis: Partial<ReferenceAnalysis>;
+  content?: GeneratedContent;
+}
+
+async function callVisionProvider(imageDataUrl: string): Promise<ProviderResult> {
   const parsed = parseImageDataUrl(imageDataUrl);
   if (!parsed || !SUPPORTED_MEDIA_TYPES.has(parsed.mediaType)) {
     throw new Error('UNSUPPORTED_IMAGE');
@@ -214,8 +271,8 @@ async function callVisionProvider(imageDataUrl: string): Promise<Partial<Referen
 
   const client = new Anthropic();
   const response = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 512,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1536,
     system: ANALYSIS_SYSTEM_PROMPT,
     messages: [
       {
@@ -237,10 +294,19 @@ async function callVisionProvider(imageDataUrl: string): Promise<Partial<Referen
 
   const textBlock = response.content.find((block): block is Anthropic.TextBlock => block.type === 'text');
   if (!textBlock) {
-    return {};
+    return { analysis: {} };
   }
 
-  return sanitizeAnalysis(extractJsonText(textBlock.text));
+  const parsedJson = extractJsonText(textBlock.text);
+  const contentSource =
+    typeof parsedJson === 'object' && parsedJson !== null
+      ? (parsedJson as Record<string, unknown>).content
+      : undefined;
+
+  return {
+    analysis: sanitizeAnalysis(parsedJson),
+    content: sanitizeContent(contentSource),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -328,8 +394,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   try {
-    const analysis = await callVisionProvider(parsedBody.image);
-    const success: AnalyzeSuccessResponse = { ok: true, analysis };
+    const { analysis, content } = await callVisionProvider(parsedBody.image);
+    const success: AnalyzeSuccessResponse = { ok: true, analysis, content };
     respond(res, 200, success);
   } catch (error) {
     if (error instanceof Error && error.message === 'UNSUPPORTED_IMAGE') {

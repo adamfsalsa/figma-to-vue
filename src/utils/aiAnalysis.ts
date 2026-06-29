@@ -1,12 +1,14 @@
 import type { ReferenceAnalysis } from '../types/referenceAnalysis';
+import type { GeneratedContent } from '../types/pagePlan';
 
 export type AiAnalysisResult =
-  | { ok: true; analysis: Partial<ReferenceAnalysis> }
+  | { ok: true; analysis: Partial<ReferenceAnalysis>; content?: GeneratedContent }
   | { ok: false; reason: string; message: string };
 
 interface AnalyzeApiPayload {
   ok?: boolean;
   analysis?: Partial<ReferenceAnalysis>;
+  content?: GeneratedContent;
   reason?: string;
   message?: string;
 }
@@ -43,7 +45,7 @@ export async function requestAiAnalysis(imageDataUrl: string): Promise<AiAnalysi
       };
     }
 
-    return { ok: true, analysis: payload.analysis ?? {} };
+    return { ok: true, analysis: payload.analysis ?? {}, content: payload.content };
   } catch {
     return {
       ok: false,

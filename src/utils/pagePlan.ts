@@ -1,10 +1,40 @@
-import type { PagePlan, PagePlanInput } from '../types/pagePlan';
+import type { PagePlan, PagePlanInput, PagePlanSection } from '../types/pagePlan';
 import { createDefaultVisualTokens } from '../types/visualTokens';
 
 export function buildPagePlan(input: PagePlanInput): PagePlan {
   const notes = input.notes.trim();
   const densityKey = input.density.toLowerCase();
   const visualTokens = input.visualTokens ?? createDefaultVisualTokens();
+  const content = input.content;
+
+  const templatedSections: PagePlanSection[] = [
+    {
+      id: 'design-signals',
+      title: 'Design signals',
+      body: input.referenceName
+        ? `Use ${input.referenceName} as a ${input.analysis.mediaEmphasis.toLowerCase()} reference with a ${input.analysis.heroComposition.toLowerCase()} composition.`
+        : `Use the analyzer observations as the first design signal: ${input.analysis.heroComposition.toLowerCase()}, ${input.analysis.mediaEmphasis.toLowerCase()} media.`,
+    },
+    {
+      id: 'implementation-plan',
+      title: 'Implementation plan',
+      body: `Build a ${input.analysis.layoutPattern.toLowerCase()} with ${densityKey} spacing, ${input.analysis.sectionCount} content sections, CSS tokens, and semantic Vue components.`,
+    },
+    {
+      id: 'review-notes',
+      title: `${input.analysis.ctaStyle} review notes`,
+      body: input.analysis.visualNotes || notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
+    },
+  ];
+
+  const sections: PagePlanSection[] =
+    content?.sections && content.sections.length > 0
+      ? content.sections.map((section, index) => ({
+          id: `ai-section-${index + 1}`,
+          title: section.title,
+          body: section.body,
+        }))
+      : templatedSections;
 
   return {
     schemaVersion: 'figma-to-vue.page-plan.v1',
@@ -22,29 +52,13 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
       density: input.density,
       densityKey,
       tone: input.tone,
-      kicker: `${input.pageType} concept`,
-      title: `${input.pageType} from design reference`,
-      summary: `A ${densityKey} one-page ${input.pageType.toLowerCase()} shaped around a ${input.tone.toLowerCase()} direction.`,
+      kicker: content?.kicker?.trim() || `${input.pageType} concept`,
+      title: content?.title?.trim() || `${input.pageType} from design reference`,
+      summary:
+        content?.summary?.trim() ||
+        `A ${densityKey} one-page ${input.pageType.toLowerCase()} shaped around a ${input.tone.toLowerCase()} direction.`,
     },
-    sections: [
-      {
-        id: 'design-signals',
-        title: 'Design signals',
-        body: input.referenceName
-          ? `Use ${input.referenceName} as a ${input.analysis.mediaEmphasis.toLowerCase()} reference with a ${input.analysis.heroComposition.toLowerCase()} composition.`
-          : `Use the analyzer observations as the first design signal: ${input.analysis.heroComposition.toLowerCase()}, ${input.analysis.mediaEmphasis.toLowerCase()} media.`,
-      },
-      {
-        id: 'implementation-plan',
-        title: 'Implementation plan',
-        body: `Build a ${input.analysis.layoutPattern.toLowerCase()} with ${densityKey} spacing, ${input.analysis.sectionCount} content sections, CSS tokens, and semantic Vue components.`,
-      },
-      {
-        id: 'review-notes',
-        title: `${input.analysis.ctaStyle} review notes`,
-        body: input.analysis.visualNotes || notes || 'No custom notes yet. Keep accessibility, readable structure, and deployment readiness as the baseline.',
-      },
-    ],
+    sections,
     accessibility: {
       landmarks: ['main', 'header', 'section'],
       notes: [
