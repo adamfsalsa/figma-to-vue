@@ -17,7 +17,7 @@
           <h2 id="pipeline-title">Reference intake</h2>
         </div>
         <p class="pipeline-board__note">
-          Local-only demo. Files are previewed in the browser and not uploaded.
+          Files stay in your browser unless you explicitly choose Enhance with AI.
         </p>
       </div>
 
@@ -412,11 +412,9 @@ function setReference(file: File) {
 
 /**
  * Optional second tier on top of the always-available local analyzer above.
- * Calls the /api/analyze proxy (api/analyze.ts) — currently stubbed, so this
- * normally resolves to a graceful "not configured" status and leaves the
- * analyzer fields exactly as the user set them. Once a provider is wired up
- * server-side, a successful response merges into referenceAnalysis without
- * any change needed here.
+ * Calls the /api/analyze proxy (api/analyze.ts). A successful response merges
+ * provider classifications into referenceAnalysis and stores generated copy;
+ * an unavailable or unconfigured provider leaves the local workflow intact.
  */
 async function enhanceWithAi() {
   if (!referenceFile.value || aiAnalysisPending.value) {
@@ -474,9 +472,9 @@ function generateJsonPlan() {
 }
 
 async function generatePagePreview() {
-  if (!pagePlan.value) {
-    generateJsonPlan();
-  }
+  // Rebuild from the current form state every time. Otherwise edits made after
+  // a previous generation would silently reopen a stale page plan.
+  generateJsonPlan();
 
   if (!pagePlan.value) {
     return;
@@ -499,9 +497,7 @@ async function openLivePreview() {
   // the wrong element on close.
   previewTrigger = (document.activeElement as HTMLElement) ?? null;
 
-  if (!generatedPage.value) {
-    await generatePagePreview();
-  }
+  await generatePagePreview();
 
   if (!generatedPage.value) {
     return;

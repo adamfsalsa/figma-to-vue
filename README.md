@@ -1,6 +1,8 @@
 # Figma to Vue AI Pipeline
 
-An AI-assisted portfolio case study that translates a Figma document, screenshot, or similar design reference into a production-minded Vue 3 + TypeScript webpage.
+An AI-assisted portfolio case study that translates an exported Figma frame,
+screenshot, or similar visual reference into a production-minded Vue 3 +
+TypeScript webpage.
 
 The project is intentionally framed as a pipeline, not a clone. The goal is to demonstrate how design intake, basic LLM-assisted formatting prompts, token extraction, accessible implementation, Git review, and deployment can work together on a realistic frontend workflow.
 
@@ -10,7 +12,7 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 - Drag-and-drop reference intake for screenshots or exported frames
 - Human-guided reference analyzer for visible design observations
 - Local, no-LLM color/token extraction from the uploaded reference image
-- Optional "Enhance with AI" tier: a key-safe Vercel proxy that calls claude-haiku-4-5, gated behind durable rate limiting and a prepaid spend cap (dormant until configured)
+- Optional "Enhance with AI" tier: a key-safe Vercel proxy that calls `claude-sonnet-4-6`, gated behind durable rate limiting and a prepaid spend cap (dormant until configured)
 - Basic prompt support for formatting questions before code generation
 - Constrained JSON page plan as the handoff between assistant and renderer
 - Static one-page preview generation from the current brief
@@ -26,6 +28,19 @@ The project is intentionally framed as a pipeline, not a clone. The goal is to d
 For current state, what's done, how to enable the optional AI tier, and the open
 follow-ups, see **[docs/STATUS.md](docs/STATUS.md)** — the single entry point for
 picking this up.
+
+## Scope Boundary
+
+The current application reads exported images, not native Figma documents. It
+does not call the Figma API, inspect layers/components/variables, write Git
+commits, or deploy generated output. JSON, HTML, and Vue output are copied to
+the clipboard for human review.
+
+## Work Attribution
+
+Agent-authored maintenance is recorded in [CHANGELOG.md](CHANGELOG.md). Commits
+owned by OpenAI Codex use a `codex:` subject prefix and an `Agent: OpenAI Codex`
+commit trailer so parallel agent work remains distinguishable.
 
 ## Pipeline
 

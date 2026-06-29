@@ -113,6 +113,23 @@ describe('App pipeline console', () => {
     expect(screen.getByRole('button', { name: '▶ Preview page' })).toHaveFocus();
   });
 
+  it('rebuilds the live preview from form edits made after an earlier generation', async () => {
+    const user = userEvent.setup();
+    render(App);
+
+    await user.click(screen.getByRole('button', { name: 'Generate inline' }));
+    expect(screen.getByLabelText('Generated one-page website preview')).toHaveTextContent(
+      'Product finder from design reference',
+    );
+
+    await user.selectOptions(screen.getByLabelText('What are we building?'), 'Landing page');
+    await user.click(screen.getByRole('button', { name: '▶ Preview page' }));
+
+    expect(screen.getByRole('dialog', { name: 'Live preview of the generated page' })).toHaveTextContent(
+      'Landing page from design reference',
+    );
+  });
+
   it('generates a static one-page preview from the current brief', async () => {
     const user = userEvent.setup();
     render(App);

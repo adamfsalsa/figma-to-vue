@@ -1,15 +1,15 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after the live
-preview milestone (keystone 11).
+Single entry point for whoever picks this up next. Last updated after AI page
+generation and the Codex handoff-hardening pass (keystone 14).
 
 ## Current State
 
-The pipeline runs end to end. `main` is the source of truth and is fully
-synced; all feature work has been merged via PRs #1 and #2.
+The pipeline runs end to end. `main` is the source of truth; feature work
+through AI page generation and interactive dropdowns has been merged.
 
 - **Build / typecheck / tests all green:** `npm run build`, `npm run typecheck`,
-  `npm run test` (35 tests across 8 files) pass.
+  `npm run test` (54 tests across 9 files) pass.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
@@ -66,9 +66,9 @@ Consolidated from the per-doc "Next Step" sections:
 - **Structured outputs:** the AI call uses prompt-plus-validate; switch to
   `output_config.format` once the SDK types it on GA messages.
   (`docs/ai-analysis.md`)
-- **Content fidelity:** generated section copy is templated from the plan, not
-  read from the image. Real text/layout reproduction (e.g. OCR) is out of scope
-  so far — the tool is a scaffolder, not a pixel clone.
+- **Content fidelity:** the optional AI path generates or adapts copy from the
+  image; the no-AI fallback remains templated. Exact OCR and pixel-level layout
+  reproduction remain out of scope.
 - **Deploy status panel:** keystone 8's original idea (surface the production
   URL / deploy state in-app) is still unbuilt.
 
@@ -87,8 +87,15 @@ Consolidated from the per-doc "Next Step" sections:
 
 ```bash
 npm install
-npm run test       # 35 tests
+npm run test       # 54 tests
 npm run typecheck
 npm run build
 npm run dev        # local preview at http://localhost:5173
 ```
+
+## Agent Ownership Log
+
+- **OpenAI Codex — 2026-06-29:** handoff hardening on
+  `codex/handoff-hardening`; refreshed stale preview state, forced preview
+  regeneration from current inputs, corrected privacy/model copy, added
+  regression coverage, and synchronized project status.
