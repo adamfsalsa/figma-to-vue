@@ -50,3 +50,7 @@ A "▶ Preview page" button opens the generated page in a one-click, full-screen
 ## 12. UI Cleanup
 
 A scan-first redesign applying progressive disclosure: the three always-visible code walls (implementation brief, JSON plan, Vue SFC) now collapse into closed-by-default `<details>` disclosures, the output area leads with one primary action (`▶ Preview page`) and the rendered preview as the focal point, and the shell uses calmer cards (soft shadow, larger radius), a two-column intake, and a quieted delivery footer. Purely presentational — no behavior or artifact change; all 44 tests (incl. axe) still pass.
+
+## 13. Modern SaaS Aesthetic Overhaul
+
+A full visual-identity pass to a "Modern SaaS / soft" direction (Linear/Vercel-light). The design system is rebuilt from `src/styles/tokens.css`: an indigo/violet accent on slate ink, a soft gradient canvas, larger radii, layered soft shadows, pill buttons with a gradient primary, and Plus Jakarta Sans (display) + Inter (body). All theming flows through tokens, so the chrome and the default generated-page preview stay cohesive (the preview's default hero is now indigo-soft; a real uploaded image still overrides it with its extracted palette). Presentational only — no behavior or artifact change; all 44 tests (incl. axe) pass. Fonts are an external Google Fonts dependency (degrades to system-ui).
