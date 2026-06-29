@@ -15,7 +15,7 @@
   --color-progress-track: #e4ecf7;
 
   --font-display: "Archivo", system-ui, sans-serif;
-  --font-body: system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
   --fw-display: 700;
   --fw-option-title: 500;
   --fs-heading: 42px;
