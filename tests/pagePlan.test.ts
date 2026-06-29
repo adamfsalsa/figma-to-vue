@@ -57,6 +57,46 @@ describe('page plan layer', () => {
     expect(plan.tokens.paletteSource).toBe('extracted-from-reference');
   });
 
+  it('overrides templated copy with AI-generated content when provided', () => {
+    const plan = buildPagePlan({
+      analysis: createDefaultReferenceAnalysis(),
+      density: 'Comfortable',
+      notes: '',
+      pageType: 'Landing page',
+      referenceName: 'reference.png',
+      tone: 'Calm',
+      content: {
+        kicker: 'Ride further',
+        title: 'The trail companion',
+        summary: 'Plan, track, and share every ride.',
+        sections: [
+          { title: 'Plan', body: 'Map your route.' },
+          { title: 'Track', body: 'Log every mile.' },
+        ],
+      },
+    });
+
+    expect(plan.page.kicker).toBe('Ride further');
+    expect(plan.page.title).toBe('The trail companion');
+    expect(plan.page.summary).toBe('Plan, track, and share every ride.');
+    expect(plan.sections).toHaveLength(2);
+    expect(plan.sections[0]).toMatchObject({ title: 'Plan', body: 'Map your route.' });
+  });
+
+  it('keeps templated copy when no AI content is provided', () => {
+    const plan = buildPagePlan({
+      analysis: createDefaultReferenceAnalysis(),
+      density: 'Comfortable',
+      notes: '',
+      pageType: 'Landing page',
+      referenceName: null,
+      tone: 'Calm',
+    });
+
+    expect(plan.page.title).toBe('Landing page from design reference');
+    expect(plan.sections).toHaveLength(3);
+  });
+
   it('serializes page plans as readable JSON', () => {
     const plan = buildPagePlan({
       analysis: createDefaultReferenceAnalysis(),

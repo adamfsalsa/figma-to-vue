@@ -1,3 +1,5 @@
+import type { LayoutPattern } from './referenceAnalysis';
+
 export interface GeneratedPageSection {
   title: string;
   body: string;
@@ -12,6 +14,7 @@ export interface GeneratedPageCta {
 
 export interface GeneratedPage {
   densityKey: string;
+  layoutPattern: LayoutPattern;
   kicker: string;
   palette: string[];
   referenceName: string;

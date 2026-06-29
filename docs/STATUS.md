@@ -24,9 +24,12 @@ synced; all feature work has been merged via PRs #1 and #2.
 6. **Real Vue 3 SFC generation**, layout-aware by `layoutPattern`
    (`src/utils/vueCodegen.ts`, `docs/vue-codegen.md`).
 7. **Optional AI tier** — a key-safe Vercel proxy (`api/analyze.ts`) calling
-   `claude-haiku-4-5`, with durable Upstash rate limiting. Implemented but
-   dormant until env vars are set (`docs/ai-analysis.md`).
-8. **One-click live preview** overlay with an interactive CTA, for non-coders
+   `claude-sonnet-4-6`, which classifies the layout **and generates the page
+   copy from the image** (faithful when clear, invented when vague). Durable
+   Upstash rate limiting. Implemented but dormant until env vars are set
+   (`docs/ai-analysis.md`; setup in `docs/setup-ai.md`).
+8. **One-click live preview** overlay with an interactive CTA — and an
+   interactive **dropdown** for Product-finder-flow pages — for non-coders
    (`src/components/GeneratedPagePreview.vue`, `docs/live-preview.md`).
 
 ## To Enable the AI Tier (operator, optional)

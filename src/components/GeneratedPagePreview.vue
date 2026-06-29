@@ -37,6 +37,25 @@
           <input :id="emailFieldId" type="email" placeholder="you@example.com" />
           <button type="submit" class="generated-page__cta">{{ page.cta.label }}</button>
         </form>
+
+        <form
+          v-if="showFinder"
+          class="generated-page__finder"
+          @submit.prevent="finderSubmitted = true"
+        >
+          <label :for="finderFieldId">What are you looking for?</label>
+          <div class="generated-page__finder-row">
+            <select :id="finderFieldId" v-model="finderChoice">
+              <option v-for="option in finderOptions" :key="option" :value="option">
+                {{ option }}
+              </option>
+            </select>
+            <button type="submit" class="generated-page__cta">Show results</button>
+          </div>
+          <p v-if="finderSubmitted" class="generated-page__finder-result" role="status">
+            Showing: {{ finderChoice }}
+          </p>
+        </form>
       </div>
 
       <figure v-if="page.referencePreview">
@@ -55,14 +74,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { GeneratedPage } from '../types/generatedPage';
 
 const props = defineProps<{ page: GeneratedPage }>();
 
-// Unique per instance so the form label/input id pair stays valid even when
-// this component is rendered twice (inline preview + live-preview overlay).
-const emailFieldId = `generated-page-email-${nextPreviewId()}`;
+// Unique per instance so field/label id pairs stay valid even when this
+// component is rendered twice (inline preview + live-preview overlay).
+const instanceId = nextPreviewId();
+const emailFieldId = `generated-page-email-${instanceId}`;
+const finderFieldId = `generated-page-finder-${instanceId}`;
+
+// A "Product finder flow" page gets a real interactive selector (dropdown +
+// button) so the preview behaves like the finished page, not a static mock.
+const showFinder = computed(() => props.page.layoutPattern === 'Product finder flow');
+const finderOptions = computed(() => props.page.sections.map((section) => section.title));
+const finderChoice = ref(props.page.sections[0]?.title ?? '');
+const finderSubmitted = ref(false);
 
 const paletteStyle = computed(() => {
   const palette = props.page.palette;

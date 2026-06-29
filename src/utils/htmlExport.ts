@@ -58,6 +58,11 @@ export function generatePageHtml(page: GeneratedPage): string {
       .cta-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
       .cta-form input { min-height: 44px; padding: 0 0.75rem; border: 1px solid #e4e7ee; border-radius: 8px; font: inherit; }
       .cta-form .cta { margin-top: 0; }
+      .finder { margin-top: 1.5rem; display: grid; gap: 0.5rem; max-width: 26rem; }
+      .finder > label { font-weight: 600; font-size: 0.85rem; }
+      .finder-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .finder select { flex: 1 1 12rem; min-height: 44px; padding: 0 0.75rem; border: 1px solid #e4e7ee; border-radius: 8px; font: inherit; }
+      .finder .cta { margin-top: 0; }
       .sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
       .sections article { padding: 1.25rem; border: 1px solid #e4e7ee; border-radius: 10px; }
       .sections h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
@@ -72,13 +77,31 @@ export function generatePageHtml(page: GeneratedPage): string {
           <p class="hero__kicker">${escapeHtml(page.kicker)}</p>
           <h1>${escapeHtml(page.title)}</h1>
           <p class="hero__summary">${escapeHtml(page.summary)}</p>
-${buildCtaMarkup(page.cta)}        </div>${imageMarkup}
+${buildCtaMarkup(page.cta)}${buildFinderMarkup(page)}        </div>${imageMarkup}
       </header>
       <section class="sections" aria-label="Page sections">${sectionsMarkup}
       </section>
     </main>
   </body>
 </html>`;
+}
+
+function buildFinderMarkup(page: GeneratedPage): string {
+  if (page.layoutPattern !== 'Product finder flow') {
+    return '';
+  }
+  const options = page.sections
+    .map((section) => `              <option>${escapeHtml(section.title)}</option>`)
+    .join('\n');
+  return `          <form class="finder">
+            <label for="finder-choice">What are you looking for?</label>
+            <div class="finder-row">
+              <select id="finder-choice">
+${options}
+              </select>
+              <button type="submit" class="cta">Show results</button>
+            </div>
+          </form>\n`;
 }
 
 function buildCtaMarkup(cta: GeneratedPageCta): string {

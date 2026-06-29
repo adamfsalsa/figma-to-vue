@@ -4,6 +4,7 @@ import type { GeneratedPage, GeneratedPageCta } from '../src/types/generatedPage
 function makePage(overrides: Partial<GeneratedPage> = {}): GeneratedPage {
   return {
     densityKey: 'comfortable',
+    layoutPattern: 'Hero plus feature cards',
     kicker: 'Concept',
     title: 'Generated title',
     summary: 'A short summary line.',
@@ -63,6 +64,21 @@ describe('generatePageHtml', () => {
 
     expect(html).toContain('--token-accent: #0a0ac8');
     expect(html).toContain('--token-surface-soft: #f0f0f0');
+  });
+
+  it('includes an interactive dropdown for a Product finder flow page', () => {
+    const html = generatePageHtml(makePage({ layoutPattern: 'Product finder flow' }));
+
+    expect(html).toContain('class="finder"');
+    expect(html).toContain('<select');
+    expect(html).toContain('<option>Design signals</option>');
+    expect(html).toContain('Show results');
+  });
+
+  it('omits the dropdown for non-finder layouts', () => {
+    const html = generatePageHtml(makePage());
+
+    expect(html).not.toContain('class="finder"');
   });
 
   it('escapes content so generated text cannot inject markup', () => {
