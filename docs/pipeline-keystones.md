@@ -58,3 +58,16 @@ A full visual-identity pass to a "Modern SaaS / soft" direction (Linear/Vercel-l
 ## 14. AI Page Generation + Interactive Controls
 
 The AI tier moves from *classifier* to *generator*. `api/analyze.ts` now uses `claude-sonnet-4-6` and returns both the layout classification **and** generated page copy (kicker/title/summary/sections) under a `content` key — instructed to read real text faithfully from a clear mockup/Figma frame and to invent coherent premium copy from a vague sketch, always returning complete content. That content flows through `buildPagePlan` as an override, so the rendered page reflects the image instead of templated placeholder text. Separately, generated **Product finder flow** pages now include a real interactive **dropdown + button** (with reactive state) across the live preview, the Vue SFC (ref-backed `v-model`), and the HTML export — so generated pages have both buttons and dropdowns. Still dormant until configured; the click-by-click key setup is in `docs/setup-ai.md`. Cost note: Sonnet + content generation is ≈ $0.02–0.05/generation, so $5 ≈ 100–250 generations. 52 tests pass (incl. axe); the live AI call remains unverified until a key is set.
+
+## 15. Structured Figma URL Intake
+
+**Owner: OpenAI Codex.** Reference intake now accepts a Figma design/file/frame
+URL. A serverless proxy keeps `FIGMA_ACCESS_TOKEN` out of the browser and reads
+the selected node tree plus a rendered PNG from Figma's REST API. The importer
+extracts visible text, auto-layout direction, components/instances, solid fill
+colors, layer counts, content candidates, and broad editable page-analysis
+fields before handing the result to the existing JSON/Vue pipeline. Requests
+are restricted to parsed Figma keys and the fixed `api.figma.com` origin. Image
+upload and human-guided analysis remain available without a token. See
+`docs/figma-import.md`. 60 tests pass, including axe; the live Figma request
+remains unverified until a scoped token is configured.

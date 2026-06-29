@@ -1,7 +1,7 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after AI page
-generation and the Codex handoff-hardening pass (keystone 14).
+Single entry point for whoever picks this up next. Last updated after structured
+Figma URL intake (keystone 15).
 
 ## Current State
 
@@ -9,26 +9,28 @@ The pipeline runs end to end. `main` is the source of truth; feature work
 through AI page generation and interactive dropdowns has been merged.
 
 - **Build / typecheck / tests all green:** `npm run build`, `npm run typecheck`,
-  `npm run test` (54 tests across 9 files) pass.
+  `npm run test` (60 tests across 11 files) pass.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
 ## What's Done (see `pipeline-keystones.md` for the full list)
 
 1. Reference intake (drag-drop/file, local preview).
-2. Human-guided `ReferenceAnalyzer` form.
-3. **Real local color/token extraction** from image pixels — no LLM, no key
+2. Server-side Figma URL intake for file/frame nodes, rendered previews, text,
+   auto-layout, components, fills, and inferred page content (`api/figma.ts`).
+3. Human-guided `ReferenceAnalyzer` form.
+4. **Real local color/token extraction** from image pixels — no LLM, no key
    (`src/utils/colorExtraction.ts`, `docs/ai-analysis.md`).
-4. Constrained, typed JSON page plan (`src/utils/pagePlan.ts`).
-5. Static one-page preview + styled HTML export.
-6. **Real Vue 3 SFC generation**, layout-aware by `layoutPattern`
+5. Constrained, typed JSON page plan (`src/utils/pagePlan.ts`).
+6. Static one-page preview + styled HTML export.
+7. **Real Vue 3 SFC generation**, layout-aware by `layoutPattern`
    (`src/utils/vueCodegen.ts`, `docs/vue-codegen.md`).
-7. **Optional AI tier** — a key-safe Vercel proxy (`api/analyze.ts`) calling
+8. **Optional AI tier** — a key-safe Vercel proxy (`api/analyze.ts`) calling
    `claude-sonnet-4-6`, which classifies the layout **and generates the page
    copy from the image** (faithful when clear, invented when vague). Durable
    Upstash rate limiting. Implemented but dormant until env vars are set
    (`docs/ai-analysis.md`; setup in `docs/setup-ai.md`).
-8. **One-click live preview** overlay with an interactive CTA — and an
+9. **One-click live preview** overlay with an interactive CTA — and an
    interactive **dropdown** for Product-finder-flow pages — for non-coders
    (`src/components/GeneratedPagePreview.vue`, `docs/live-preview.md`).
 
@@ -43,6 +45,9 @@ uses the free local analyzer. Full detail + the "never exceed $5" steps are in
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` — durable rate limiter.
 
 See `.env.example` and `docs/deployment.md`.
+
+Figma URL intake separately requires a server-side `FIGMA_ACCESS_TOKEN` with
+`file_content:read`. The token is never returned to or stored by the browser.
 
 ## What's Next
 
@@ -87,7 +92,7 @@ Consolidated from the per-doc "Next Step" sections:
 
 ```bash
 npm install
-npm run test       # 54 tests
+npm run test       # 60 tests
 npm run typecheck
 npm run build
 npm run dev        # local preview at http://localhost:5173
@@ -99,3 +104,7 @@ npm run dev        # local preview at http://localhost:5173
   `codex/handoff-hardening`; refreshed stale preview state, forced preview
   regeneration from current inputs, corrected privacy/model copy, added
   regression coverage, and synchronized project status.
+- **OpenAI Codex — 2026-06-29:** structured Figma REST intake on
+  `codex/figma-url-intake`; added server-only token handling, file/frame URL
+  parsing, node and rendered-image retrieval, structured design extraction,
+  editable inferred content, and end-to-end regression coverage.
