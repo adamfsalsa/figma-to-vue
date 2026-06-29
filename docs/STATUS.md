@@ -41,6 +41,11 @@ uses the free local analyzer. Full detail + the "never exceed $5" steps are in
 
 See `.env.example` and `docs/deployment.md`.
 
+## What's Next
+
+A prioritized, forward-looking feature list lives in **`docs/roadmap.md`**. The
+smaller, already-scoped follow-ups are below.
+
 ## Open Follow-Ups (nothing is blocking)
 
 Consolidated from the per-doc "Next Step" sections:
