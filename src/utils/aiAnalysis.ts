@@ -13,7 +13,13 @@ interface AnalyzeApiPayload {
   message?: string;
 }
 
-const REQUEST_TIMEOUT_MS = 8000;
+// 8s was tuned for the original lightweight classify-only Haiku call
+// (max_tokens 512). The proxy now uses Sonnet and also generates page copy
+// (max_tokens 1536), which legitimately takes longer — especially on a cold
+// serverless start. 25s leaves headroom under the 30s server-side limit set
+// in vercel.json (functions["api/analyze.ts"].maxDuration) so the client
+// times out gracefully before Vercel would kill the function outright.
+const REQUEST_TIMEOUT_MS = 25_000;
 
 /** Either an uploaded file's downscaled data URL, or a Figma-imported preview URL. */
 export type AiAnalysisSource = { image: string } | { imageUrl: string };
