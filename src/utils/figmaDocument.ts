@@ -41,16 +41,49 @@ interface FigmaTypeStyle {
   letterSpacing?: number;
   lineHeightPx?: number;
   textAlignHorizontal?: string;
+  textCase?: string;
+  textDecoration?: string;
+}
+
+interface FigmaConstraints {
+  horizontal?: string;
+  vertical?: string;
+}
+
+interface FigmaEffect {
+  color?: FigmaColor & { a?: number };
+  offset?: { x?: number; y?: number };
+  radius?: number;
+  spread?: number;
+  type?: string;
+  visible?: boolean;
+}
+
+interface FigmaComponentProperty {
+  type?: string;
+  value?: boolean | string;
 }
 
 export interface FigmaNode {
   absoluteBoundingBox?: FigmaRectangle;
   characters?: string;
   children?: FigmaNode[];
+  clipsContent?: boolean;
+  componentId?: string;
+  componentProperties?: Record<string, FigmaComponentProperty>;
+  constraints?: FigmaConstraints;
+  effects?: FigmaEffect[];
   fills?: FigmaPaint[] | string;
   id: string;
   itemSpacing?: number;
   layoutMode?: string;
+  layoutSizingHorizontal?: string;
+  layoutSizingVertical?: string;
+  layoutWrap?: string;
+  maxHeight?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  minWidth?: number;
   name: string;
   opacity?: number;
   paddingBottom?: number;
@@ -60,8 +93,10 @@ export interface FigmaNode {
   primaryAxisAlignItems?: string;
   counterAxisAlignItems?: string;
   cornerRadius?: number;
+  rectangleCornerRadii?: number[];
   style?: FigmaTypeStyle;
   strokes?: FigmaPaint[];
+  strokeWeight?: number;
   type: string;
   visible?: boolean;
 }
@@ -199,6 +234,13 @@ function mapFigmaRegion(
     tag,
     evidence: { source: 'figma', nodeId: node.id, confidence: 0.95 },
     children,
+    metadata: {
+      sourceType: node.type,
+      ...(node.componentId ? { componentId: node.componentId } : {}),
+      ...(node.componentProperties
+        ? { componentProperties: collectComponentProperties(node.componentProperties) }
+        : {}),
+    },
   };
 
   const bounds = toBounds(node.absoluteBoundingBox);
@@ -208,6 +250,8 @@ function mapFigmaRegion(
   const style = toRegionStyle(node);
   if (Object.keys(style).length > 0) region.style = style;
   if (node.type === 'TEXT' && node.characters?.trim()) region.text = node.characters.trim();
+  const control = inferControl(node, element);
+  if (control) region.control = control;
   if (element === 'media') {
     region.asset = {
       kind: 'image',
@@ -229,6 +273,8 @@ function inferElement(
   if (node.type === 'TEXT') return 'text';
   if (hasImageFill(node)) return 'media';
   const name = node.name.toLowerCase();
+  if (/\b(input|field|search|email|password)\b/.test(name)) return 'input';
+  if (/\b(link|text link)\b/.test(name)) return 'link';
   if (/button|cta|call to action/.test(name)) return 'button';
   if (/card|tile|item/.test(name)) return 'card';
   if (/section|hero|footer|header|navigation|navbar|features|pricing|testimonial/.test(name)) return 'section';
@@ -244,6 +290,8 @@ function inferTag(
   if (isRoot) return 'main';
   const name = node.name.toLowerCase();
   if (element === 'button') return 'button';
+  if (element === 'link') return 'a';
+  if (element === 'input') return 'input';
   if (element === 'media') return 'img';
   if (/navigation|navbar|\bnav\b/.test(name)) return 'nav';
   if (/header|hero/.test(name)) return 'header';
@@ -266,7 +314,13 @@ function toBounds(value: FigmaRectangle | undefined): ReconstructionRegion['boun
 }
 
 function toLayout(node: FigmaNode, children: ReconstructionRegion[]): ReconstructionLayout | undefined {
-  if (children.length === 0) return undefined;
+  if (
+    children.length === 0
+    && !node.constraints
+    && !node.layoutSizingHorizontal
+    && !node.layoutSizingVertical
+    && !hasSizeLimits(node)
+  ) return undefined;
   const mode = node.layoutMode === 'HORIZONTAL'
     ? 'row'
     : node.layoutMode === 'VERTICAL'
@@ -274,6 +328,34 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
       : inferFreeLayout(children);
   return {
     mode,
+    ...(node.layoutWrap === 'WRAP' ? { wrap: true } : {}),
+    ...(mode === 'grid' ? { columns: inferGridColumns(children) } : {}),
+    ...((node.layoutSizingHorizontal || node.layoutSizingVertical)
+      ? {
+          sizing: {
+            horizontal: mapSizing(node.layoutSizingHorizontal),
+            vertical: mapSizing(node.layoutSizingVertical),
+          },
+        }
+      : {}),
+    ...(hasSizeLimits(node)
+      ? {
+          sizeLimits: {
+            ...(Number.isFinite(node.minWidth) ? { minWidth: Math.max(0, node.minWidth ?? 0) } : {}),
+            ...(Number.isFinite(node.maxWidth) ? { maxWidth: Math.max(0, node.maxWidth ?? 0) } : {}),
+            ...(Number.isFinite(node.minHeight) ? { minHeight: Math.max(0, node.minHeight ?? 0) } : {}),
+            ...(Number.isFinite(node.maxHeight) ? { maxHeight: Math.max(0, node.maxHeight ?? 0) } : {}),
+          },
+        }
+      : {}),
+    ...(node.constraints
+      ? {
+          constraints: {
+            horizontal: mapConstraint(node.constraints.horizontal),
+            vertical: mapConstraint(node.constraints.vertical),
+          },
+        }
+      : {}),
     ...(Number.isFinite(node.itemSpacing) ? { gap: Math.max(0, node.itemSpacing ?? 0) } : {}),
     ...(hasPadding(node)
       ? {
@@ -296,6 +378,9 @@ function inferFreeLayout(children: ReconstructionRegion[]): ReconstructionLayout
   const ys = children.map((child) => child.bounds!.y ?? 0);
   const xSpread = Math.max(...xs) - Math.min(...xs);
   const ySpread = Math.max(...ys) - Math.min(...ys);
+  const distinctRows = new Set(ys.map((value) => Math.round(value / 8))).size;
+  const distinctColumns = new Set(xs.map((value) => Math.round(value / 8))).size;
+  if (children.length >= 4 && distinctRows >= 2 && distinctColumns >= 2) return 'grid';
   return xSpread > ySpread * 1.4 ? 'row' : 'column';
 }
 
@@ -303,19 +388,41 @@ function toRegionStyle(node: FigmaNode): ReconstructionStyle {
   const solid = firstSolidColor(node.fills);
   const stroke = firstSolidColor(node.strokes);
   const textAlign = node.style?.textAlignHorizontal?.toLowerCase();
+  const shadow = firstShadow(node.effects);
+  const blur = firstBlur(node.effects);
   return {
     ...(solid && node.type === 'TEXT' ? { color: solid } : {}),
     ...(solid && node.type !== 'TEXT' ? { background: solid } : {}),
     ...(stroke ? { borderColor: stroke } : {}),
+    ...(stroke && Number.isFinite(node.strokeWeight) ? { borderWidth: Math.max(0, node.strokeWeight ?? 0) } : {}),
     ...(Number.isFinite(node.cornerRadius) ? { borderRadius: Math.max(0, node.cornerRadius ?? 0) } : {}),
+    ...(validCornerRadii(node.rectangleCornerRadii)
+      ? {
+          borderRadii: {
+            topLeft: Math.max(0, node.rectangleCornerRadii[0]),
+            topRight: Math.max(0, node.rectangleCornerRadii[1]),
+            bottomRight: Math.max(0, node.rectangleCornerRadii[2]),
+            bottomLeft: Math.max(0, node.rectangleCornerRadii[3]),
+          },
+        }
+      : {}),
     ...(node.style?.fontFamily ? { fontFamily: node.style.fontFamily } : {}),
     ...(Number.isFinite(node.style?.fontSize) ? { fontSize: Math.max(1, node.style?.fontSize ?? 1) } : {}),
     ...(Number.isFinite(node.style?.fontWeight) ? { fontWeight: node.style?.fontWeight } : {}),
     ...(Number.isFinite(node.style?.letterSpacing) ? { letterSpacing: node.style?.letterSpacing } : {}),
     ...(Number.isFinite(node.style?.lineHeightPx) ? { lineHeight: node.style?.lineHeightPx } : {}),
     ...(Number.isFinite(node.opacity) ? { opacity: Math.min(1, Math.max(0, node.opacity ?? 1)) } : {}),
+    ...(node.clipsContent === true ? { overflow: 'hidden' as const } : {}),
+    ...(shadow ? { boxShadow: shadow } : {}),
+    ...(blur !== undefined ? { blur } : {}),
     ...(textAlign && ['left', 'center', 'right', 'justify'].includes(textAlign)
       ? { textAlign: textAlign as ReconstructionStyle['textAlign'] }
+      : {}),
+    ...(mapTextDecoration(node.style?.textDecoration)
+      ? { textDecoration: mapTextDecoration(node.style?.textDecoration) }
+      : {}),
+    ...(mapTextTransform(node.style?.textCase)
+      ? { textTransform: mapTextTransform(node.style?.textCase) }
       : {}),
   };
 }
@@ -326,8 +433,16 @@ function firstSolidColor(fills: FigmaPaint[] | string | undefined): string | und
   return fill?.color ? colorToHex(fill.color) : undefined;
 }
 
+function validCornerRadii(value: number[] | undefined): value is [number, number, number, number] {
+  return Array.isArray(value) && value.length === 4 && value.every(Number.isFinite);
+}
+
 function hasPadding(node: FigmaNode): boolean {
   return [node.paddingTop, node.paddingRight, node.paddingBottom, node.paddingLeft].some(Number.isFinite);
+}
+
+function hasSizeLimits(node: FigmaNode): boolean {
+  return [node.minWidth, node.maxWidth, node.minHeight, node.maxHeight].some(Number.isFinite);
 }
 
 function mapAlign(value: string | undefined): ReconstructionLayout['align'] | undefined {
@@ -344,6 +459,116 @@ function mapJustify(value: string | undefined): ReconstructionLayout['justify'] 
   if (value === 'MAX') return 'end';
   if (value === 'SPACE_BETWEEN') return 'space-between';
   return undefined;
+}
+
+function mapSizing(value: string | undefined): 'fixed' | 'hug' | 'fill' {
+  if (value === 'HUG') return 'hug';
+  if (value === 'FILL') return 'fill';
+  return 'fixed';
+}
+
+function mapConstraint(
+  value: string | undefined,
+): 'start' | 'center' | 'end' | 'stretch' | 'scale' {
+  if (value === 'CENTER') return 'center';
+  if (value === 'MAX') return 'end';
+  if (value === 'STRETCH') return 'stretch';
+  if (value === 'SCALE') return 'scale';
+  return 'start';
+}
+
+function inferGridColumns(children: ReconstructionRegion[]): number {
+  const columns = new Set(
+    children
+      .map((child) => child.bounds?.x)
+      .filter((value): value is number => Number.isFinite(value))
+      .map((value) => Math.round(value / 8)),
+  );
+  return Math.min(12, Math.max(1, columns.size || Math.ceil(Math.sqrt(children.length))));
+}
+
+function firstShadow(effects: FigmaEffect[] | undefined): string | undefined {
+  const effect = effects?.find((candidate) =>
+    candidate.visible !== false
+    && (candidate.type === 'DROP_SHADOW' || candidate.type === 'INNER_SHADOW'),
+  );
+  if (!effect) return undefined;
+  const x = finite(effect.offset?.x);
+  const y = finite(effect.offset?.y);
+  const radius = Math.max(0, finite(effect.radius));
+  const spread = Math.max(0, finite(effect.spread));
+  const color = effect.color ?? { r: 0, g: 0, b: 0, a: 0.2 };
+  const inset = effect.type === 'INNER_SHADOW' ? ' inset' : '';
+  return `${x}px ${y}px ${radius}px ${spread}px ${colorToRgba(color)}${inset}`;
+}
+
+function firstBlur(effects: FigmaEffect[] | undefined): number | undefined {
+  const effect = effects?.find((candidate) =>
+    candidate.visible !== false
+    && (candidate.type === 'LAYER_BLUR' || candidate.type === 'BACKGROUND_BLUR'),
+  );
+  return effect && Number.isFinite(effect.radius) ? Math.max(0, effect.radius ?? 0) : undefined;
+}
+
+function colorToRgba(color: FigmaColor & { a?: number }): string {
+  const channel = (value = 0) => Math.round(Math.min(1, Math.max(0, value)) * 255);
+  const alpha = Math.min(1, Math.max(0, color.a ?? 1));
+  return `rgba(${channel(color.r)}, ${channel(color.g)}, ${channel(color.b)}, ${alpha})`;
+}
+
+function finite(value: number | undefined): number {
+  return Number.isFinite(value) ? Math.round((value ?? 0) * 100) / 100 : 0;
+}
+
+function mapTextDecoration(value: string | undefined): ReconstructionStyle['textDecoration'] | undefined {
+  if (value === 'UNDERLINE') return 'underline';
+  if (value === 'STRIKETHROUGH') return 'line-through';
+  if (value === 'NONE') return 'none';
+  return undefined;
+}
+
+function mapTextTransform(value: string | undefined): ReconstructionStyle['textTransform'] | undefined {
+  if (value === 'UPPER') return 'uppercase';
+  if (value === 'LOWER') return 'lowercase';
+  if (value === 'TITLE') return 'capitalize';
+  if (value === 'ORIGINAL') return 'none';
+  return undefined;
+}
+
+function collectComponentProperties(
+  properties: Record<string, FigmaComponentProperty>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(properties)
+      .slice(0, 30)
+      .map(([key, property]) => [key.slice(0, 120), String(property.value ?? '').slice(0, 200)]),
+  );
+}
+
+function inferControl(
+  node: FigmaNode,
+  element: ReconstructionRegion['element'],
+): ReconstructionRegion['control'] | undefined {
+  if (!['button', 'link', 'input'].includes(element)) return undefined;
+  const visibleText = flattenVisibleNodes(node)
+    .find((candidate) => candidate.type === 'TEXT' && candidate.characters?.trim())
+    ?.characters?.trim();
+  const label = (visibleText || node.name).slice(0, 160);
+  if (element === 'button') return { type: 'button', label };
+  if (element === 'link') return { type: 'link', label };
+  const name = node.name.toLowerCase();
+  const type = /password/.test(name)
+    ? 'password'
+    : /email/.test(name)
+      ? 'email'
+      : /search/.test(name)
+        ? 'search'
+        : 'text';
+  return {
+    type,
+    label: node.name.slice(0, 160),
+    ...(visibleText ? { placeholder: visibleText.slice(0, 160) } : {}),
+  };
 }
 
 function inferAssetAlt(name: string): string {

@@ -135,3 +135,10 @@ HTML. It retains geometry, auto-layout, spacing, typography, common visual
 styles, semantic intent, provenance, confidence, and separately rendered image
 nodes. The complete frame is comparison-only. `RCN-01` and `RCN-02` now pass;
 ten release gates remain, so this keystone is still incomplete.
+
+**Figma fidelity checkpoint (OpenAI Codex, 2026-06-30):** plan v2 now also
+preserves resizing constraints, fill/hug/fixed sizing, min/max dimensions,
+wrapping, inferred grids, clipping, stroke widths, shadows, blur, text
+transforms, component IDs/variant properties, and accessible native intent for
+clearly identified links, buttons, and inputs. This remains Figma-only work;
+image parity is not included in this checkpoint.

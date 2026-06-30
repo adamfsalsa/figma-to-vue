@@ -47,9 +47,21 @@ function renderRegion(
     return `<div class="${classes} rr--media-placeholder" data-reconstruction-region="${escapeHtml(region.id)}"${accessibility}>${label ? `<span>${escapeHtml(label)}</span>` : ''}</div>`;
   }
 
+  if (region.tag === 'input') {
+    const type = ['email', 'search', 'password'].includes(region.control?.type ?? '')
+      ? region.control!.type
+      : 'text';
+    const label = region.control?.label || region.name;
+    const placeholder = region.control?.placeholder
+      ? ` placeholder="${escapeHtml(region.control.placeholder)}"`
+      : '';
+    return `<input type="${type}" class="${classes}" data-reconstruction-region="${escapeHtml(region.id)}" aria-label="${escapeHtml(label)}"${placeholder}>`;
+  }
+
   const tag = region.tag === 'img' ? 'div' : region.tag;
-  const attributes = tag === 'button' ? ' type="button"' : '';
-  const text = region.text ? escapeHtml(region.text) : '';
+  const attributes = tag === 'button' ? ' type="button"' : tag === 'a' ? ' href="#"' : '';
+  const fallbackLabel = region.children.length === 0 ? region.control?.label : undefined;
+  const text = region.text ? escapeHtml(region.text) : fallbackLabel ? escapeHtml(fallbackLabel) : '';
   const children = region.children
     .map((child) => renderRegion(child, region.bounds?.width, cssRules))
     .join('\n');
@@ -64,14 +76,28 @@ function buildRule(
   const declarations: string[] = [];
   const { bounds, layout, style } = region;
   if (layout) {
-    declarations.push(`display: ${layout.mode === 'grid' ? 'grid' : 'flex'}`);
-    if (layout.mode !== 'grid') declarations.push(`flex-direction: ${layout.mode === 'row' ? 'row' : 'column'}`);
+    if (region.children.length > 0) {
+      declarations.push(`display: ${layout.mode === 'grid' ? 'grid' : 'flex'}`);
+      if (layout.mode !== 'grid') declarations.push(`flex-direction: ${layout.mode === 'row' ? 'row' : 'column'}`);
+    }
     if (layout.gap !== undefined) declarations.push(`gap: ${px(layout.gap)}`);
+    if (layout.columns !== undefined && layout.mode === 'grid') {
+      declarations.push(`grid-template-columns: repeat(${Math.max(1, Math.round(layout.columns))}, minmax(0, 1fr))`);
+    }
+    if (layout.wrap) declarations.push('flex-wrap: wrap');
     if (layout.align) declarations.push(`align-items: ${flexValue(layout.align)}`);
     if (layout.justify) declarations.push(`justify-content: ${flexValue(layout.justify)}`);
     if (layout.padding) {
       declarations.push(`padding: ${px(layout.padding.top)} ${px(layout.padding.right)} ${px(layout.padding.bottom)} ${px(layout.padding.left)}`);
     }
+    if (layout.sizing?.horizontal === 'fill') declarations.push('flex-grow: 1');
+    if (layout.sizing?.horizontal === 'hug') declarations.push('width: fit-content');
+    if (layout.constraints?.horizontal === 'stretch') declarations.push('align-self: stretch');
+    if (layout.constraints?.horizontal === 'scale') declarations.push('width: 100%');
+    if (layout.sizeLimits?.minWidth !== undefined) declarations.push(`min-width: ${px(layout.sizeLimits.minWidth)}`);
+    if (layout.sizeLimits?.maxWidth !== undefined) declarations.push(`max-width: ${px(layout.sizeLimits.maxWidth)}`);
+    if (layout.sizeLimits?.minHeight !== undefined) declarations.push(`min-height: ${px(layout.sizeLimits.minHeight)}`);
+    if (layout.sizeLimits?.maxHeight !== undefined) declarations.push(`max-height: ${px(layout.sizeLimits.maxHeight)}`);
   }
   if (bounds?.width && parentWidth && parentWidth > 0) {
     declarations.push(`flex-basis: ${percent((bounds.width / parentWidth) * 100)}`);
@@ -86,8 +112,11 @@ function buildRule(
 function appendStyle(declarations: string[], style: ReconstructionStyle | undefined): void {
   if (!style) return;
   if (style.background) declarations.push(`background: ${safeCssToken(style.background)}`);
-  if (style.borderColor) declarations.push(`border: 1px solid ${safeCssToken(style.borderColor)}`);
+  if (style.borderColor) declarations.push(`border: ${px(style.borderWidth ?? 1)} solid ${safeCssToken(style.borderColor)}`);
   if (style.borderRadius !== undefined) declarations.push(`border-radius: ${px(style.borderRadius)}`);
+  if (style.borderRadii) {
+    declarations.push(`border-radius: ${px(style.borderRadii.topLeft)} ${px(style.borderRadii.topRight)} ${px(style.borderRadii.bottomRight)} ${px(style.borderRadii.bottomLeft)}`);
+  }
   if (style.color) declarations.push(`color: ${safeCssToken(style.color)}`);
   if (style.fontFamily) declarations.push(`font-family: ${safeFont(style.fontFamily)}`);
   if (style.fontSize !== undefined) declarations.push(`font-size: ${px(style.fontSize)}`);
@@ -95,7 +124,12 @@ function appendStyle(declarations: string[], style: ReconstructionStyle | undefi
   if (style.letterSpacing !== undefined) declarations.push(`letter-spacing: ${px(style.letterSpacing)}`);
   if (style.lineHeight !== undefined) declarations.push(`line-height: ${px(style.lineHeight)}`);
   if (style.opacity !== undefined) declarations.push(`opacity: ${number(style.opacity)}`);
+  if (style.overflow) declarations.push(`overflow: ${style.overflow}`);
+  if (style.boxShadow) declarations.push(`box-shadow: ${safeShadow(style.boxShadow)}`);
+  if (style.blur !== undefined) declarations.push(`filter: blur(${px(style.blur)})`);
   if (style.textAlign) declarations.push(`text-align: ${style.textAlign}`);
+  if (style.textDecoration) declarations.push(`text-decoration: ${style.textDecoration}`);
+  if (style.textTransform) declarations.push(`text-transform: ${style.textTransform}`);
 }
 
 function flexValue(value: string): string {
@@ -114,6 +148,12 @@ function safeCssToken(value: string): string {
 
 function safeFont(value: string): string {
   return `"${value.replace(/["\\;{}]/g, '')}", system-ui, sans-serif`;
+}
+
+function safeShadow(value: string): string {
+  return /^-?[\d.]+px -?[\d.]+px [\d.]+px [\d.]+px rgba\(\d{1,3}, \d{1,3}, \d{1,3}, [\d.]+\)( inset)?$/.test(value)
+    ? value
+    : 'none';
 }
 
 function px(value: number): string {
@@ -142,7 +182,9 @@ const BASE_CSS = `.rr { box-sizing: border-box; min-width: 0; }
 .rr--text { margin: 0; white-space: pre-wrap; }
 .rr--media { display: block; width: 100%; height: auto; object-fit: cover; }
 .rr--media-placeholder { display: grid; min-height: 8rem; place-items: center; background: #f4f6fb; color: #64748b; }
-.rr--button { min-height: 44px; padding: 0.65rem 1rem; border: 0; cursor: pointer; font: inherit; }`;
+.rr--button { min-height: 44px; padding: 0.65rem 1rem; border: 0; cursor: pointer; font: inherit; }
+.rr--link { color: inherit; }
+.rr--input { min-height: 44px; padding: 0.65rem 0.85rem; font: inherit; }`;
 
 const RESPONSIVE_CSS = `@media (max-width: 48rem) {
   .rr--row { flex-wrap: wrap; }

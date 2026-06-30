@@ -16,6 +16,11 @@ can be reviewed and merged without ambiguity.
   and standalone HTML instead of reducing every Figma frame to four templates.
 - Activate and pass `RCN-01` structural divergence and `RCN-02` no-screenshot-
   shortcut acceptance gates; add focused importer and renderer regression tests.
+- Preserve Figma fill/hug/fixed sizing, constraints, min/max dimensions,
+  wrapping, inferred grids, clipping, stroke widths, shadows, blur, text
+  transforms, component IDs, and variant-property metadata.
+- Translate clearly named Figma buttons, links, and input/search/email/password
+  fields into native accessible controls across preview, Vue, and HTML output.
 
 ### Product contract and tests - OpenAI Codex (2026-06-30)
 

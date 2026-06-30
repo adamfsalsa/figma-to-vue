@@ -97,6 +97,7 @@ describe('Figma server endpoint', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/v1/files/ABC123/nodes');
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('depth=10');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       headers: { 'X-Figma-Token': 'server-secret' },
     });

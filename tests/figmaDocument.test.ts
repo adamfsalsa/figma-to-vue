@@ -120,4 +120,110 @@ describe('Figma document intake', () => {
     });
     expect(collectFigmaAssetNodeIds(root)).toEqual(['12:40']);
   });
+
+  it('preserves grid, constraints, effects, component metadata, and native control intent', () => {
+    const root: FigmaNode = {
+      id: '20:1',
+      name: 'Account settings grid',
+      type: 'FRAME',
+      absoluteBoundingBox: { x: 0, y: 0, width: 960, height: 640 },
+      clipsContent: true,
+      rectangleCornerRadii: [8, 16, 24, 32],
+      strokes: [{ type: 'SOLID', color: { r: 0.8, g: 0.82, b: 0.86 } }],
+      strokeWeight: 2,
+      effects: [
+        {
+          type: 'DROP_SHADOW',
+          offset: { x: 0, y: 8 },
+          radius: 24,
+          spread: 0,
+          color: { r: 0, g: 0, b: 0, a: 0.18 },
+        },
+        { type: 'LAYER_BLUR', radius: 3 },
+      ],
+      children: [
+        makeControlNode('20:2', 'Email input', 0, 0, 'Email address'),
+        makeControlNode('20:3', 'Search field', 480, 0, 'Search products'),
+        {
+          id: '20:4',
+          name: 'Learn more link',
+          type: 'INSTANCE',
+          componentId: 'component:link',
+          componentProperties: {
+            Size: { type: 'VARIANT', value: 'Large' },
+            Disabled: { type: 'BOOLEAN', value: false },
+          },
+          absoluteBoundingBox: { x: 0, y: 320, width: 440, height: 120 },
+          children: [{ id: '20:5', name: 'Link label', type: 'TEXT', characters: 'Learn more' }],
+        },
+        {
+          id: '20:6',
+          name: 'Save button',
+          type: 'COMPONENT',
+          absoluteBoundingBox: { x: 480, y: 320, width: 440, height: 120 },
+          children: [{ id: '20:7', name: 'Button label', type: 'TEXT', characters: 'Save changes' }],
+        },
+      ],
+    };
+
+    const imported = buildFigmaDocumentImport('Settings', root, null);
+    const page = imported.reconstruction.regions[0];
+
+    expect(page.layout).toMatchObject({ mode: 'grid', columns: 2 });
+    expect(page.style).toMatchObject({
+      borderColor: '#ccd1db',
+      borderWidth: 2,
+      overflow: 'hidden',
+      blur: 3,
+      borderRadii: { topLeft: 8, topRight: 16, bottomRight: 24, bottomLeft: 32 },
+    });
+    expect(page.style?.boxShadow).toBe('0px 8px 24px 0px rgba(0, 0, 0, 0.18)');
+
+    expect(page.children[0]).toMatchObject({
+      element: 'input',
+      tag: 'input',
+      control: { type: 'email', label: 'Email input', placeholder: 'Email address' },
+      layout: {
+        sizing: { horizontal: 'fill', vertical: 'hug' },
+        constraints: { horizontal: 'stretch', vertical: 'start' },
+        sizeLimits: { minWidth: 240, maxWidth: 640 },
+      },
+    });
+    expect(page.children[2]).toMatchObject({
+      element: 'link',
+      tag: 'a',
+      control: { type: 'link', label: 'Learn more' },
+      metadata: {
+        sourceType: 'INSTANCE',
+        componentId: 'component:link',
+        componentProperties: { Size: 'Large', Disabled: 'false' },
+      },
+    });
+    expect(page.children[3]).toMatchObject({
+      element: 'button',
+      tag: 'button',
+      control: { type: 'button', label: 'Save changes' },
+    });
+  });
 });
+
+function makeControlNode(
+  id: string,
+  name: string,
+  x: number,
+  y: number,
+  placeholder: string,
+): FigmaNode {
+  return {
+    id,
+    name,
+    type: 'FRAME',
+    absoluteBoundingBox: { x, y, width: 440, height: 120 },
+    layoutSizingHorizontal: 'FILL',
+    layoutSizingVertical: 'HUG',
+    constraints: { horizontal: 'STRETCH', vertical: 'MIN' },
+    minWidth: 240,
+    maxWidth: 640,
+    children: [{ id: `${id}-text`, name: 'Placeholder', type: 'TEXT', characters: placeholder }],
+  };
+}

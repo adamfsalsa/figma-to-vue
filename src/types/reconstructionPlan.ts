@@ -7,7 +7,9 @@ export type ReconstructionElement =
   | 'card'
   | 'text'
   | 'media'
-  | 'button';
+  | 'button'
+  | 'link'
+  | 'input';
 
 export type ReconstructionTag =
   | 'main'
@@ -22,6 +24,8 @@ export type ReconstructionTag =
   | 'h2'
   | 'h3'
   | 'button'
+  | 'a'
+  | 'input'
   | 'img';
 
 export interface ReconstructionBounds {
@@ -37,12 +41,34 @@ export interface ReconstructionLayout {
   justify?: 'start' | 'center' | 'end' | 'space-between';
   mode: 'row' | 'column' | 'grid' | 'free';
   padding?: { top: number; right: number; bottom: number; left: number };
+  columns?: number;
+  constraints?: {
+    horizontal: 'start' | 'center' | 'end' | 'stretch' | 'scale';
+    vertical: 'start' | 'center' | 'end' | 'stretch' | 'scale';
+  };
+  sizing?: {
+    horizontal: 'fixed' | 'hug' | 'fill';
+    vertical: 'fixed' | 'hug' | 'fill';
+  };
+  sizeLimits?: {
+    maxHeight?: number;
+    maxWidth?: number;
+    minHeight?: number;
+    minWidth?: number;
+  };
+  wrap?: boolean;
 }
 
 export interface ReconstructionStyle {
   background?: string;
   borderColor?: string;
   borderRadius?: number;
+  borderRadii?: {
+    bottomLeft: number;
+    bottomRight: number;
+    topLeft: number;
+    topRight: number;
+  };
   color?: string;
   fontFamily?: string;
   fontSize?: number;
@@ -50,7 +76,13 @@ export interface ReconstructionStyle {
   letterSpacing?: number;
   lineHeight?: number;
   opacity?: number;
+  blur?: number;
+  boxShadow?: string;
+  borderWidth?: number;
+  overflow?: 'hidden' | 'visible';
   textAlign?: 'left' | 'center' | 'right' | 'justify';
+  textDecoration?: 'none' | 'underline' | 'line-through';
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
 }
 
 export interface ReconstructionAsset {
@@ -70,11 +102,21 @@ export interface ReconstructionRegion {
   asset?: ReconstructionAsset;
   bounds?: ReconstructionBounds;
   children: ReconstructionRegion[];
+  control?: {
+    label: string;
+    placeholder?: string;
+    type: 'button' | 'link' | 'text' | 'email' | 'search' | 'password';
+  };
   element: ReconstructionElement;
   evidence: ReconstructionEvidence;
   id: string;
   layout?: ReconstructionLayout;
   name: string;
+  metadata?: {
+    componentId?: string;
+    componentProperties?: Record<string, string>;
+    sourceType: string;
+  };
   style?: ReconstructionStyle;
   tag: ReconstructionTag;
   text?: string;

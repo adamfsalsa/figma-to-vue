@@ -38,6 +38,12 @@ imports the first top-level frame, component, component set, or section.
   nested hierarchy, source bounds, auto-layout direction/gaps/padding,
   typography, solid fills/strokes, radii, semantic intent, provenance, and
   confidence
+- Fill/hug/fixed sizing, min/max dimensions, horizontal/vertical constraints,
+  wrapping, inferred grid columns, clipping, stroke width, shadows, blur, and
+  text case/decoration
+- Component IDs and bounded variant/property metadata
+- Native semantic intent for clearly named buttons, links, search fields,
+  email/password fields, and general text inputs
 - Independent rendered assets for image-bearing nodes (up to the documented
   import cap), kept separate from the full-frame comparison image
 
@@ -57,9 +63,9 @@ heuristics are intentionally reviewable rather than presented as certainty.
 - Rendered image URLs are temporary Figma assets and should not be treated as
   permanent hosting. Asset materialization is still required before exported
   pages can be considered durable.
-- The v2 mapper preserves visible structure and common style/layout evidence,
-  but component variants, variables, effects, complex grids, and prototype
-  behavior still require deeper mapping and review.
+- The v2 mapper preserves common structure, constraints, component metadata,
+  grids, and effects, but variables, advanced component-set semantics, complex
+  vector effects, and prototype behavior still require deeper mapping/review.
 - Image-only references do not yet produce the same v2 plan; that parity is the
   next core slice, not an optional enhancement.
 - Figma applies REST limits based on endpoint tier, seat type, and the plan that

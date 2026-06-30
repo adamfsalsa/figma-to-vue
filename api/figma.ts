@@ -102,7 +102,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
 async function fetchNode(fileKey: string, nodeId: string, token: string) {
   const payload = await figmaFetch<FigmaNodesResponse>(
-    `/v1/files/${encodeURIComponent(fileKey)}/nodes?ids=${encodeURIComponent(nodeId)}&depth=6`,
+    `/v1/files/${encodeURIComponent(fileKey)}/nodes?ids=${encodeURIComponent(nodeId)}&depth=10`,
     token,
   );
   const node = payload.nodes?.[nodeId]?.document;
