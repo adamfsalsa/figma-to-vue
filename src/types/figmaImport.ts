@@ -1,6 +1,6 @@
-import type { GeneratedContent } from './pagePlan';
-import type { ReferenceAnalysis } from './referenceAnalysis';
-import type { VisualTokens } from './visualTokens';
+import type { GeneratedContent } from './pagePlan.js';
+import type { ReferenceAnalysis } from './referenceAnalysis.js';
+import type { VisualTokens } from './visualTokens.js';
 
 export interface FigmaDocumentImport {
   analysis: ReferenceAnalysis;
