@@ -11,9 +11,8 @@ describe('App pipeline console', () => {
     expect(screen.getByRole('heading', { level: 3, name: '2. Formatting assistant' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Reference analyzer' })).toBeInTheDocument();
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent('Pipeline gates:');
-    expect(screen.getByLabelText('Generated JSON page plan')).toHaveTextContent(
-      'No JSON plan generated yet',
-    );
+    expect(screen.queryByLabelText('Generated JSON page plan')).not.toBeInTheDocument();
+    expect(screen.getByText(/Generate a page plan to see the typed JSON contract/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate JSON plan' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate inline' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy Vue component' })).toBeInTheDocument();
