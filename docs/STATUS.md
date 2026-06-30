@@ -1,7 +1,7 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after structured
-Figma URL intake (keystone 15).
+Single entry point for whoever picks this up next. Last updated after wiring
+the optional AI tier to Figma-imported references (keystone 16).
 
 ## Current State
 
@@ -9,7 +9,7 @@ The pipeline runs end to end. `main` is the source of truth; feature work
 through AI page generation and interactive dropdowns has been merged.
 
 - **Build / typecheck / tests all green:** `npm run build`, `npm run typecheck`,
-  `npm run test` (60 tests across 11 files) pass.
+  `npm run test` (64 tests across 12 files) pass.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
@@ -27,9 +27,12 @@ through AI page generation and interactive dropdowns has been merged.
    (`src/utils/vueCodegen.ts`, `docs/vue-codegen.md`).
 8. **Optional AI tier** — a key-safe Vercel proxy (`api/analyze.ts`) calling
    `claude-sonnet-4-6`, which classifies the layout **and generates the page
-   copy from the image** (faithful when clear, invented when vague). Durable
-   Upstash rate limiting. Implemented but dormant until env vars are set
-   (`docs/ai-analysis.md`; setup in `docs/setup-ai.md`).
+   copy from the image** (faithful when clear, invented when vague). Works for
+   both reference sources: an uploaded file (downscaled client-side) or a
+   Figma URL import (its remote preview fetched server-side, restricted to
+   Figma's own hosts as an SSRF guard). Durable Upstash rate limiting.
+   Implemented but dormant until env vars are set (`docs/ai-analysis.md`;
+   setup in `docs/setup-ai.md`).
 9. **One-click live preview** overlay with an interactive CTA — and an
    interactive **dropdown** for Product-finder-flow pages — for non-coders
    (`src/components/GeneratedPagePreview.vue`, `docs/live-preview.md`).
@@ -92,7 +95,7 @@ Consolidated from the per-doc "Next Step" sections:
 
 ```bash
 npm install
-npm run test       # 60 tests
+npm run test       # 64 tests
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -101,6 +104,12 @@ npm run dev        # local preview at http://localhost:5173
 
 ## Agent Ownership Log
 
+- **Claude (Anthropic) — 2026-06-29:** wired the optional AI tier
+  (`api/analyze.ts`) to also accept Figma-imported references — a server-side
+  fetch of the Figma-returned preview URL, restricted to Figma's own hosts
+  (`isAllowedFigmaPreviewHost()`) as an SSRF guard, converted to the same
+  data-URL shape an uploaded file would produce. "Enhance with AI" now shows
+  and works for both reference sources. See keystone 16.
 - **Claude (Anthropic) — 2026-06-26 to 2026-06-29:** hybrid AI analysis tier
   (local color extraction + the Claude-backed `/api/analyze` proxy, upgraded
   from a layout classifier to a page-copy generator), real Vue 3 SFC

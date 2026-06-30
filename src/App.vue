@@ -88,7 +88,7 @@
             </p>
           </div>
 
-          <div v-if="referenceFile" class="ai-enhance">
+          <div v-if="referencePreview" class="ai-enhance">
             <button type="button" :disabled="aiAnalysisPending" @click="enhanceWithAi">
               {{ aiAnalysisPending ? 'Asking AI…' : 'Enhance with AI (optional)' }}
             </button>
@@ -478,12 +478,16 @@ function revokeLocalPreview() {
 
 /**
  * Optional second tier on top of the always-available local analyzer above.
- * Calls the /api/analyze proxy (api/analyze.ts). A successful response merges
- * provider classifications into referenceAnalysis and stores generated copy;
- * an unavailable or unconfigured provider leaves the local workflow intact.
+ * Calls the /api/analyze proxy (api/analyze.ts). Works for both reference
+ * sources: an uploaded file is downscaled and sent as a data URL; a
+ * Figma-imported reference has no local File, so its remote preview URL is
+ * sent instead and fetched server-side (see api/analyze.ts). A successful
+ * response merges provider classifications into referenceAnalysis and stores
+ * generated copy; an unavailable or unconfigured provider leaves the local
+ * workflow intact.
  */
 async function enhanceWithAi() {
-  if (!referenceFile.value || aiAnalysisPending.value) {
+  if (!referencePreview.value || aiAnalysisPending.value) {
     return;
   }
 
@@ -491,8 +495,10 @@ async function enhanceWithAi() {
   aiAnalysisStatus.value = 'Asking the AI analyzer…';
 
   try {
-    const imageDataUrl = await fileToDownscaledDataUrl(referenceFile.value);
-    const result = await requestAiAnalysis(imageDataUrl);
+    const source = referenceFile.value
+      ? { image: await fileToDownscaledDataUrl(referenceFile.value) }
+      : { imageUrl: referencePreview.value };
+    const result = await requestAiAnalysis(source);
 
     if (result.ok) {
       referenceAnalysis.value = { ...referenceAnalysis.value, ...result.analysis };

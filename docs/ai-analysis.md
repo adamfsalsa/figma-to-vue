@@ -7,6 +7,16 @@ from the image** — faithful when the reference is clear, invented when it is
 vague. It is fully implemented but stays dormant until an API key and rate-limit
 store are configured. The app is safe and useful with neither.
 
+**Works for both reference sources the app supports:** an uploaded image file,
+or a Figma URL import (`docs/figma-import.md`). An uploaded file is downscaled
+client-side and sent as an `image` data URL, exactly as before. A Figma import
+has no local file — only a remote preview URL Figma returned — so it is sent as
+an `imageUrl` instead, and `api/analyze.ts` fetches it **server-side** (the
+browser never makes this request). That fetch is restricted to Figma's own
+preview hosts (`isAllowedFigmaPreviewHost()` — `figma.com` and its subdomains
+only, over `https://` only), so the endpoint cannot be used as an open SSRF
+proxy for arbitrary URLs.
+
 ## What Works Today (No LLM, No Key, $0)
 
 `src/utils/colorExtraction.ts` runs entirely in the browser:
@@ -65,7 +75,10 @@ matters and what a key-in-the-client approach would expose.
 Implemented now:
 
 - Request validation (POST only, body shape, image size cap, supported media
-  types).
+  types). Accepts either `{ image }` (a data URL) or `{ imageUrl }` (a Figma
+  preview URL, validated against `isAllowedFigmaPreviewHost()` and fetched
+  server-side with a timeout and byte-size cap before being handed to the model
+  in the same shape as an upload).
 - A real **`claude-sonnet-4-6`** vision call. The model returns a JSON object
   that (a) classifies the layout into the `ReferenceAnalysis` enums and (b)
   **generates the page copy** — kicker, title, summary, and 2–4 sections —

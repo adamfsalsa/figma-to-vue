@@ -15,13 +15,19 @@ interface AnalyzeApiPayload {
 
 const REQUEST_TIMEOUT_MS = 8000;
 
+/** Either an uploaded file's downscaled data URL, or a Figma-imported preview URL. */
+export type AiAnalysisSource = { image: string } | { imageUrl: string };
+
 /**
  * Calls the optional /api/analyze proxy (see api/analyze.ts). The provider
  * call behind that endpoint is optional and requires server-side Anthropic and
  * Upstash configuration. Callers always retain the local, no-LLM fallback for
- * any unsuccessful response, regardless of the returned reason.
+ * any unsuccessful response, regardless of the returned reason. Works for both
+ * reference sources the app supports: an uploaded image (`{ image }`) and a
+ * Figma URL import (`{ imageUrl }`, fetched server-side from Figma's preview
+ * host — see isAllowedFigmaPreviewHost in api/analyze.ts).
  */
-export async function requestAiAnalysis(imageDataUrl: string): Promise<AiAnalysisResult> {
+export async function requestAiAnalysis(source: AiAnalysisSource): Promise<AiAnalysisResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -29,7 +35,7 @@ export async function requestAiAnalysis(imageDataUrl: string): Promise<AiAnalysi
     const response = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageDataUrl }),
+      body: JSON.stringify(source),
       signal: controller.signal,
     });
 

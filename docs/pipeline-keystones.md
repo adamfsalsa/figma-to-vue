@@ -71,3 +71,21 @@ are restricted to parsed Figma keys and the fixed `api.figma.com` origin. Image
 upload and human-guided analysis remain available without a token. See
 `docs/figma-import.md`. 60 tests pass, including axe; the live Figma request
 remains unverified until a scoped token is configured.
+
+## 16. AI Tier Wired to Figma-Imported References
+
+The optional AI tier (keystone 14) and Figma URL intake (keystone 15) were built
+independently and didn't compose: "Enhance with AI" was hidden whenever the
+reference came from Figma, because that path has no local `File` to downscale —
+only the remote preview URL Figma returned. `api/analyze.ts` now accepts either
+`{ image }` (an uploaded file's data URL, unchanged) or `{ imageUrl }` (a Figma
+preview URL). The `imageUrl` is fetched **server-side**, never by the browser,
+and is restricted by `isAllowedFigmaPreviewHost()` to `figma.com` and its
+subdomains over `https://` only — an explicit SSRF guard, unit-tested in
+`tests/analyzeImageSource.test.ts`. The fetched bytes are converted to the same
+data-URL shape the upload path already produces, so `callVisionProvider()`
+needed no change. `App.vue`'s "Enhance with AI" action now shows and works for
+both reference sources. Verified end-to-end in a real browser (mocked Figma
+import → click Enhance → request body correctly carries `imageUrl` pointing at
+the Figma preview host). 64 tests pass (incl. axe); the live AI call itself
+remains unverified until a key is configured (unchanged from keystone 14).
