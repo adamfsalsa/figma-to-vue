@@ -7,6 +7,14 @@
  * semantic fields pixel math cannot reach (hero composition, layout pattern,
  * CTA style) by asking a vision-capable model. See docs/ai-analysis.md.
  *
+ * IMAGE SOURCES: the reference can come from either path the app supports —
+ * an uploaded file (sent as an "image" data URL, downscaled client-side) or a
+ * Figma URL import (sent as an "imageUrl" pointing at the rendered preview
+ * Figma returned via api/figma.ts). The imageUrl path is fetched server-side
+ * (never by the browser) and is restricted to Figma's own preview hosts — see
+ * isAllowedFigmaPreviewHost() — so this endpoint cannot be used as an open
+ * SSRF proxy for arbitrary URLs.
+ *
  * KEY SAFETY: the model API key lives only as a server-side environment
  * variable (ANTHROPIC_API_KEY) and never reaches the browser — that is the
  * entire reason this proxy exists.
@@ -52,6 +60,8 @@ interface ApiResponse {
 interface AnalyzeRequestBody {
   /** Data URL (e.g. "data:image/png;base64,...") of the (downscaled) reference. */
   image?: unknown;
+  /** Remote preview URL from a Figma import (see api/figma.ts). Fetched server-side. */
+  imageUrl?: unknown;
 }
 
 type AnalyzeSuccessResponse = {
@@ -314,18 +324,88 @@ async function callVisionProvider(imageDataUrl: string): Promise<ProviderResult>
 // ---------------------------------------------------------------------------
 
 const MAX_IMAGE_DATA_URL_LENGTH = 8 * 1024 * 1024; // ~8MB of base64 text
+const MAX_REMOTE_IMAGE_BYTES = 8 * 1024 * 1024; // ~8MB of raw image bytes
+const REMOTE_FETCH_TIMEOUT_MS = 10_000;
 
-function parseRequestBody(body: unknown): { image: string } | null {
+type ImageSource = { image: string } | { imageUrl: string };
+
+/**
+ * SSRF guard for the imageUrl path: only Figma's own preview/CDN hosts are
+ * fetchable. Figma's file API and image-render API both return URLs under
+ * figma.com subdomains (e.g. s3-alpha-sig.figma.com); nothing else is allowed.
+ * Exported so the allowlist logic is unit-testable without exercising the
+ * full handler (see tests/analyzeImageSource.test.ts).
+ */
+export function isAllowedFigmaPreviewHost(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  return parsed.hostname === 'figma.com' || parsed.hostname.endsWith('.figma.com');
+}
+
+function parseRequestBody(body: unknown): ImageSource | null {
   if (typeof body !== 'object' || body === null) {
     return null;
   }
 
-  const { image } = body as AnalyzeRequestBody;
-  if (typeof image !== 'string' || !image.startsWith('data:image/') || image.length > MAX_IMAGE_DATA_URL_LENGTH) {
-    return null;
+  const { image, imageUrl } = body as AnalyzeRequestBody;
+
+  if (typeof image === 'string') {
+    if (!image.startsWith('data:image/') || image.length > MAX_IMAGE_DATA_URL_LENGTH) {
+      return null;
+    }
+    return { image };
   }
 
-  return { image };
+  if (typeof imageUrl === 'string') {
+    if (imageUrl.length > 2000 || !isAllowedFigmaPreviewHost(imageUrl)) {
+      return null;
+    }
+    return { imageUrl };
+  }
+
+  return null;
+}
+
+/**
+ * Fetches a Figma-hosted preview image server-side (the browser never sees or
+ * makes this request) and converts it to the same "data:<type>;base64,..."
+ * shape the upload path already produces, so callVisionProvider() needs no
+ * change. Throws on timeout, non-2xx, a non-image response, or an oversized
+ * body — callers treat any throw as an invalid request.
+ */
+async function fetchRemoteImageAsDataUrl(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REMOTE_FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error('REMOTE_IMAGE_FETCH_FAILED');
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.startsWith('image/')) {
+      throw new Error('REMOTE_IMAGE_NOT_AN_IMAGE');
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > MAX_REMOTE_IMAGE_BYTES) {
+      throw new Error('REMOTE_IMAGE_TOO_LARGE');
+    }
+
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +443,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     respond(res, 400, {
       ok: false,
       reason: 'invalid_request',
-      message: 'Expected a JSON body with an "image" data URL.',
+      message: 'Expected a JSON body with an "image" data URL or a Figma "imageUrl".',
     });
     return;
   }
@@ -393,8 +473,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
+  let imageDataUrl: string;
+  if ('image' in parsedBody) {
+    imageDataUrl = parsedBody.image;
+  } else {
+    try {
+      imageDataUrl = await fetchRemoteImageAsDataUrl(parsedBody.imageUrl);
+    } catch {
+      respond(res, 400, {
+        ok: false,
+        reason: 'invalid_request',
+        message: 'Could not fetch the reference image from the provided Figma preview URL.',
+      });
+      return;
+    }
+  }
+
   try {
-    const { analysis, content } = await callVisionProvider(parsedBody.image);
+    const { analysis, content } = await callVisionProvider(imageDataUrl);
     const success: AnalyzeSuccessResponse = { ok: true, analysis, content };
     respond(res, 200, success);
   } catch (error) {
