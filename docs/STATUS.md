@@ -101,6 +101,14 @@ npm run dev        # local preview at http://localhost:5173
 
 ## Agent Ownership Log
 
+- **Claude (Anthropic) — 2026-06-26 to 2026-06-29:** hybrid AI analysis tier
+  (local color extraction + the Claude-backed `/api/analyze` proxy, upgraded
+  from a layout classifier to a page-copy generator), real Vue 3 SFC
+  generation, the styled HTML export, the one-click live preview with
+  interactive CTA and finder dropdown, the Modern SaaS visual redesign, and
+  the docs listed throughout this file (`ai-analysis.md`, `vue-codegen.md`,
+  `live-preview.md`, `setup-ai.md`, `roadmap.md`, this file, keystones 9–14).
+  See `CHANGELOG.md` for the itemized list.
 - **OpenAI Codex — 2026-06-29:** handoff hardening on
   `codex/handoff-hardening`; refreshed stale preview state, forced preview
   regeneration from current inputs, corrected privacy/model copy, added
