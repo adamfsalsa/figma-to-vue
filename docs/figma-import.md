@@ -34,6 +34,16 @@ imports the first top-level frame, component, component set, or section.
 - Solid fill colors
 - Broad layout, hero, media, CTA, and section-count classifications
 - A rendered PNG preview URL from Figma
+- A versioned `figma-to-vue.reconstruction-plan.v2` region tree preserving
+  nested hierarchy, source bounds, auto-layout direction/gaps/padding,
+  typography, solid fills/strokes, radii, semantic intent, provenance, and
+  confidence
+- Independent rendered assets for image-bearing nodes (up to the documented
+  import cap), kept separate from the full-frame comparison image
+
+The reconstruction plan now drives the live preview, Vue SFC, and HTML export.
+Different Figma row/column compositions therefore produce different markup and
+CSS instead of only changing words inside one universal hero template.
 
 The imported classification remains editable in the human-guided analyzer.
 This matters because layer names and document organization vary widely; the
@@ -45,10 +55,13 @@ heuristics are intentionally reviewable rather than presented as certainty.
   plan and scope requirements.
 - Prototype transitions and arbitrary plugin data are not translated.
 - Rendered image URLs are temporary Figma assets and should not be treated as
-  permanent hosting.
-- Exact component reconstruction still requires deeper node-to-component
-  mapping. This milestone supplies genuine structured Figma input to the
-  existing constrained page-plan pipeline.
+  permanent hosting. Asset materialization is still required before exported
+  pages can be considered durable.
+- The v2 mapper preserves visible structure and common style/layout evidence,
+  but component variants, variables, effects, complex grids, and prototype
+  behavior still require deeper mapping and review.
+- Image-only references do not yet produce the same v2 plan; that parity is the
+  next core slice, not an optional enhancement.
 - Figma applies REST limits based on endpoint tier, seat type, and the plan that
   contains the requested file. Rate-limit responses are surfaced as a safe
   import failure rather than retried aggressively.

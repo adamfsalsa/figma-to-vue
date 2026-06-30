@@ -1,9 +1,9 @@
 # Live Preview
 
-> **Current implementation, not final scope:** the preview demonstrates the
-> page-plan v1 renderer. It is not a faithful reconstruction while it displays
-> the whole reference image and renders one of four broad shells. See keystone
-> 18 and `docs/reconstruction-contract.md`.
+> **Current implementation, not final scope:** Figma imports now use the nested
+> reconstruction-plan v2 renderer and never display the whole frame as generated
+> content. Image-only references still use the four broad page-plan v1 shells.
+> See keystone 18 and `docs/reconstruction-contract.md`.
 
 This milestone adds a one-click, full-screen preview of the generated page so a
 non-coder can see and interact with the result in real time — not just read the

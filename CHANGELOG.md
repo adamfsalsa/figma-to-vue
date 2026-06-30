@@ -5,6 +5,18 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Figma reconstruction v2 foundation - OpenAI Codex (2026-06-30)
+
+- Preserve nested Figma regions, geometry, auto-layout, spacing, typography,
+  fills, strokes, radii, semantic intent, provenance, and confidence in a
+  versioned reconstruction-plan v2.
+- Fetch image-bearing Figma nodes as independent assets and keep the selected
+  full-frame render out of generated-page content.
+- Render the source-dependent region tree through the live preview, Vue SFC,
+  and standalone HTML instead of reducing every Figma frame to four templates.
+- Activate and pass `RCN-01` structural divergence and `RCN-02` no-screenshot-
+  shortcut acceptance gates; add focused importer and renderer regression tests.
+
 ### Product contract and tests - OpenAI Codex (2026-06-30)
 
 - Establish source-dependent, usable-page reconstruction from both Figma and

@@ -5,6 +5,16 @@
     :style="paletteStyle"
     aria-label="Generated one-page website preview"
   >
+    <div v-if="page.reconstruction" class="generated-page__reconstruction">
+      <ReconstructionRegion
+        v-for="region in page.reconstruction.regions"
+        :key="region.id"
+        :region="region"
+        :parent-width="page.reconstruction.viewport.width ?? undefined"
+      />
+    </div>
+
+    <template v-else>
     <header class="generated-page__hero">
       <div>
         <p class="generated-page__kicker">{{ page.kicker }}</p>
@@ -58,10 +68,6 @@
         </form>
       </div>
 
-      <figure v-if="page.referencePreview">
-        <img :src="page.referencePreview" :alt="`Reference used for ${page.title}`" />
-        <figcaption>{{ page.referenceName }}</figcaption>
-      </figure>
     </header>
 
     <section class="generated-page__sections" aria-label="Page sections">
@@ -70,11 +76,13 @@
         <p>{{ section.body }}</p>
       </div>
     </section>
+    </template>
   </article>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import ReconstructionRegion from './ReconstructionRegion.vue';
 import type { GeneratedPage } from '../types/generatedPage';
 
 const props = defineProps<{ page: GeneratedPage }>();

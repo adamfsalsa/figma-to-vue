@@ -1,9 +1,9 @@
 # Vue Component Generation
 
-> **Current implementation, not final scope:** this generator proves safe Vue
-> export from page-plan v1, but its four variants are not sufficient to fulfill
-> the source-dependent reconstruction requirement. Keystone 18 and
-> `docs/reconstruction-contract.md` define the required replacement.
+> **Current implementation, not final scope:** Figma imports now emit static,
+> source-dependent Vue markup/CSS from reconstruction-plan v2. Image-only inputs
+> still use page-plan v1's four variants. Keystone 18 and
+> `docs/reconstruction-contract.md` define the remaining completion gates.
 
 This milestone turns the constrained JSON page plan into a real, standalone
 Vue 3 single-file component — the actual "one-shot Vue output" the pipeline is

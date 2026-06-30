@@ -1,4 +1,9 @@
-import { buildFigmaDocumentImport, parseFigmaUrl, type FigmaNode } from '../src/utils/figmaDocument.js';
+import {
+  buildFigmaDocumentImport,
+  collectFigmaAssetNodeIds,
+  parseFigmaUrl,
+  type FigmaNode,
+} from '../src/utils/figmaDocument.js';
 import type { FigmaDocumentImport } from '../src/types/figmaImport.js';
 
 interface ApiRequest {
@@ -64,8 +69,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const { fileName, node, thumbnailUrl } = parsed.nodeId
       ? await fetchNode(parsed.fileKey, parsed.nodeId, token)
       : await fetchFirstFrame(parsed.fileKey, token);
-    const previewUrl = await fetchPreview(parsed.fileKey, node.id, token).catch(() => thumbnailUrl);
-    const document: FigmaDocumentImport = buildFigmaDocumentImport(fileName, node, previewUrl);
+    const assetNodeIds = collectFigmaAssetNodeIds(node);
+    const renderedImages: Record<string, string | null> = await fetchRenderedImages(
+      parsed.fileKey,
+      [node.id, ...assetNodeIds],
+      token,
+    ).catch((): Record<string, string | null> => ({}));
+    const previewUrl = renderedImages[node.id] ?? thumbnailUrl;
+    const assetUrls = Object.fromEntries(assetNodeIds.map((id) => [id, renderedImages[id] ?? null]));
+    const document: FigmaDocumentImport = buildFigmaDocumentImport(fileName, node, previewUrl, assetUrls);
     respond(res, 200, { ok: true, document });
   } catch (error) {
     if (error instanceof FigmaApiError && (error.status === 401 || error.status === 403)) {
@@ -109,15 +121,28 @@ async function fetchFirstFrame(fileKey: string, token: string) {
     ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'SECTION'].includes(candidate.type),
   );
   if (!node) throw new FigmaApiError(404);
-  return { fileName: payload.name ?? 'Figma file', node, thumbnailUrl: payload.thumbnailUrl ?? null };
+  // The shallow file request is only for selecting a sensible first frame.
+  // Fetch that frame again at reconstruction depth so a URL without node-id
+  // does not silently produce a one-level template.
+  const detailed = await fetchNode(fileKey, node.id, token);
+  return {
+    fileName: payload.name ?? detailed.fileName,
+    node: detailed.node,
+    thumbnailUrl: payload.thumbnailUrl ?? detailed.thumbnailUrl,
+  };
 }
 
-async function fetchPreview(fileKey: string, nodeId: string, token: string): Promise<string | null> {
+async function fetchRenderedImages(
+  fileKey: string,
+  nodeIds: string[],
+  token: string,
+): Promise<Record<string, string | null>> {
+  if (nodeIds.length === 0) return {};
   const payload = await figmaFetch<FigmaImagesResponse>(
-    `/v1/images/${encodeURIComponent(fileKey)}?ids=${encodeURIComponent(nodeId)}&format=png&scale=2`,
+    `/v1/images/${encodeURIComponent(fileKey)}?ids=${encodeURIComponent(nodeIds.join(','))}&format=png&scale=2`,
     token,
   );
-  return payload.images?.[nodeId] ?? null;
+  return payload.images ?? {};
 }
 
 async function figmaFetch<T>(path: string, token: string): Promise<T> {

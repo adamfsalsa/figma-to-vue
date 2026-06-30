@@ -1,4 +1,5 @@
 import type { GeneratedContent } from './pagePlan.js';
+import type { ReconstructionPlan } from './reconstructionPlan.js';
 import type { ReferenceAnalysis } from './referenceAnalysis.js';
 import type { VisualTokens } from './visualTokens.js';
 
@@ -10,6 +11,7 @@ export interface FigmaDocumentImport {
   nodeName: string;
   nodeType: string;
   previewUrl: string | null;
+  reconstruction: ReconstructionPlan;
   structure: {
     autoLayout: string | null;
     componentCount: number;

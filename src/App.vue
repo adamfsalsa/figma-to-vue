@@ -270,6 +270,7 @@ import type { GeneratedContent, PagePlan, VisualDensity } from './types/pagePlan
 import type { GeneratedPage } from './types/generatedPage';
 import type { ReferenceAnalysis } from './types/referenceAnalysis';
 import { createDefaultReferenceAnalysis } from './types/referenceAnalysis';
+import type { ReconstructionPlan } from './types/reconstructionPlan';
 import type { VisualTokens } from './types/visualTokens';
 import { createDefaultVisualTokens } from './types/visualTokens';
 import { fileToDownscaledDataUrl, requestAiAnalysis } from './utils/aiAnalysis';
@@ -329,6 +330,7 @@ const visualTokens = ref<VisualTokens>(createDefaultVisualTokens());
 const aiAnalysisStatus = ref('');
 const aiAnalysisPending = ref(false);
 const aiContent = ref<GeneratedContent | null>(null);
+const reconstruction = ref<ReconstructionPlan | null>(null);
 const figmaUrl = ref('');
 const figmaImportStatus = ref('');
 const figmaImportPending = ref(false);
@@ -427,6 +429,7 @@ function setReference(file: File) {
   visualTokens.value = createDefaultVisualTokens();
   aiAnalysisStatus.value = '';
   aiContent.value = null;
+  reconstruction.value = null;
   figmaUrl.value = '';
   figmaImportStatus.value = '';
   clearGeneratedOutputs();
@@ -456,6 +459,7 @@ async function importFigmaReference() {
     referenceAnalysis.value = imported.analysis;
     visualTokens.value = imported.visualTokens;
     aiContent.value = imported.content;
+    reconstruction.value = imported.reconstruction;
     aiAnalysisStatus.value = '';
     clearGeneratedOutputs();
     figmaImportStatus.value = `Imported ${imported.structure.layerCount} layers and ${imported.structure.textLayerCount} text layers from “${imported.nodeName}”.`;
@@ -538,6 +542,7 @@ function generateJsonPlan() {
     tone: formatting.tone,
     visualTokens: visualTokens.value,
     content: aiContent.value ?? undefined,
+    reconstruction: reconstruction.value ?? undefined,
   });
 
   previewStatus.value = 'Generated constrained JSON page plan.';
@@ -646,7 +651,10 @@ function pagePlanToGeneratedPage(plan: PagePlan): GeneratedPage {
     kicker: plan.page.kicker,
     palette: plan.tokens.palette,
     referenceName: plan.reference.name ?? 'the uploaded reference placeholder',
-    referencePreview: referencePreview.value,
+    // The full source frame belongs in the analyzer/comparison UI, never in
+    // the generated page as a shortcut for reconstruction.
+    referencePreview: null,
+    reconstruction: plan.reference.reconstruction,
     title: plan.page.title,
     summary: plan.page.summary,
     sections: plan.sections.map((section) => ({

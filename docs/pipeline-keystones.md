@@ -128,3 +128,10 @@ fixture requirements are in `docs/reconstruction-contract.md`. The executable
 acceptance backlog is `tests/reconstructionAcceptance.test.ts`. This keystone is
 complete only when all `RCN-*` gates pass; `todo` cases are blockers, not optional
 enhancements.
+
+**Implementation checkpoint (OpenAI Codex, 2026-06-30):** Figma import now emits
+the v2 nested region plan and renders it recursively across preview, Vue, and
+HTML. It retains geometry, auto-layout, spacing, typography, common visual
+styles, semantic intent, provenance, confidence, and separately rendered image
+nodes. The complete frame is comparison-only. `RCN-01` and `RCN-02` now pass;
+ten release gates remain, so this keystone is still incomplete.

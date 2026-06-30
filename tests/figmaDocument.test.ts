@@ -1,4 +1,9 @@
-import { buildFigmaDocumentImport, parseFigmaUrl, type FigmaNode } from '../src/utils/figmaDocument';
+import {
+  buildFigmaDocumentImport,
+  collectFigmaAssetNodeIds,
+  parseFigmaUrl,
+  type FigmaNode,
+} from '../src/utils/figmaDocument';
 
 describe('Figma document intake', () => {
   it('parses file keys and normalizes frame node ids from Figma URLs', () => {
@@ -24,6 +29,12 @@ describe('Figma document intake', () => {
       name: 'Product finder hero',
       type: 'FRAME',
       layoutMode: 'HORIZONTAL',
+      itemSpacing: 32,
+      paddingTop: 24,
+      paddingRight: 24,
+      paddingBottom: 24,
+      paddingLeft: 24,
+      absoluteBoundingBox: { x: 0, y: 0, width: 1200, height: 720 },
       fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }],
       children: [
         {
@@ -32,7 +43,14 @@ describe('Figma document intake', () => {
           type: 'FRAME',
           children: [
             { id: '12:36', name: 'Kicker', type: 'TEXT', characters: 'Find your fit' },
-            { id: '12:37', name: 'Title', type: 'TEXT', characters: 'Choose the right bike for every road' },
+            {
+              id: '12:37',
+              name: 'Title',
+              type: 'TEXT',
+              characters: 'Choose the right bike for every road',
+              style: { fontFamily: 'Archivo', fontSize: 52, fontWeight: 700, lineHeightPx: 58 },
+              fills: [{ type: 'SOLID', color: { r: 0.05, g: 0.05, b: 0.05 } }],
+            },
             {
               id: '12:38',
               name: 'Summary',
@@ -46,6 +64,8 @@ describe('Figma document intake', () => {
           id: '12:40',
           name: 'Hero image',
           type: 'RECTANGLE',
+          absoluteBoundingBox: { x: 680, y: 80, width: 440, height: 560 },
+          cornerRadius: 24,
           fills: [{ type: 'IMAGE' }],
         },
         {
@@ -61,7 +81,12 @@ describe('Figma document intake', () => {
       ],
     };
 
-    const imported = buildFigmaDocumentImport('Bike finder', root, 'https://example.com/frame.png');
+    const imported = buildFigmaDocumentImport(
+      'Bike finder',
+      root,
+      'https://example.com/frame.png',
+      { '12:40': 'https://example.com/hero.png' },
+    );
 
     expect(imported.nodeId).toBe('12:34');
     expect(imported.analysis.layoutPattern).toBe('Product finder flow');
@@ -72,8 +97,27 @@ describe('Figma document intake', () => {
       title: 'Road bikes',
       body: 'Built for fast pavement miles.',
     });
-    expect(imported.visualTokens.palette).toEqual(['#ffffff', '#3366cc']);
+    expect(imported.visualTokens.palette).toEqual(['#ffffff', '#3366cc', '#0d0d0d']);
     expect(imported.visualTokens.source).toBe('figma-document');
     expect(imported.structure.textLayerCount).toBe(6);
+    expect(imported.reconstruction.schemaVersion).toBe('figma-to-vue.reconstruction-plan.v2');
+    expect(imported.reconstruction.source).toMatchObject({ kind: 'figma', rootNodeId: '12:34' });
+    expect(imported.reconstruction.viewport).toEqual({ width: 1200, height: 720 });
+
+    const rootRegion = imported.reconstruction.regions[0];
+    expect(rootRegion.layout).toMatchObject({ mode: 'row', gap: 32 });
+    expect(rootRegion.layout?.padding).toEqual({ top: 24, right: 24, bottom: 24, left: 24 });
+    expect(rootRegion.children[1]).toMatchObject({
+      element: 'media',
+      tag: 'img',
+      style: { borderRadius: 24 },
+      asset: { url: 'https://example.com/hero.png', sourceNodeId: '12:40' },
+    });
+    expect(rootRegion.children[0].children[1]).toMatchObject({
+      tag: 'h1',
+      text: 'Choose the right bike for every road',
+      style: { fontFamily: 'Archivo', fontSize: 52, fontWeight: 700, lineHeight: 58 },
+    });
+    expect(collectFigmaAssetNodeIds(root)).toEqual(['12:40']);
   });
 });

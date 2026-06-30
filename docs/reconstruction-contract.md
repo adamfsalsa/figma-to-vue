@@ -21,11 +21,12 @@ not feature-complete without it.
 
 ## Current Gap
 
-The current pipeline proves intake, analysis, constrained planning, preview,
-Vue/HTML export, and safe server-side API handling. Its renderer still selects
-from four broad templates. The in-app preview also displays the complete
-reference image next to generated words. Consequently, unrelated references
-can produce pages that are structurally almost identical.
+The pipeline proves intake, analysis, constrained planning, preview, Vue/HTML
+export, and safe server-side API handling. Figma imports now preserve a nested
+v2 region tree, render independent image-node assets, and keep the complete
+frame comparison-only. Image-only inputs still select from four broad templates,
+and deeper Figma component, responsive, interaction, correction, and durable
+asset work remains. Consequently, the overall product is not feature-complete.
 
 That output is useful as pipeline scaffolding, but it is not yet a reconstructed
 page and must not be represented as the final product.

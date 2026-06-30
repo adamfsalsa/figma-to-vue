@@ -5,6 +5,8 @@ import type { GeneratedPage } from '../src/types/generatedPage';
 import { createDefaultReferenceAnalysis } from '../src/types/referenceAnalysis';
 import { buildPagePlan } from '../src/utils/pagePlan';
 import { generateVueSfc } from '../src/utils/vueCodegen';
+import { buildFigmaDocumentImport, type FigmaNode } from '../src/utils/figmaDocument';
+import { generatePageHtml } from '../src/utils/htmlExport';
 
 /**
  * Release-blocking acceptance backlog for keystone 18.
@@ -19,24 +21,29 @@ import { generateVueSfc } from '../src/utils/vueCodegen';
  * require browser-level viewport/screenshot coverage when that harness lands.
  */
 describe('core reconstruction acceptance', () => {
-  it.todo('RCN-01: composition evidence changes the generated region tree, markup, and CSS', () => {
-    const leftMedia = makePlan({ heroComposition: 'Media left, text right' });
-    const fullBleed = makePlan({ heroComposition: 'Full-bleed media' });
+  it('RCN-01: composition evidence changes the generated region tree, markup, and CSS', () => {
+    const rowReference = makeFigmaComposition('HORIZONTAL');
+    const columnReference = makeFigmaComposition('VERTICAL');
+    const leftMedia = makePlan({}, rowReference.reconstruction);
+    const fullBleed = makePlan({}, columnReference.reconstruction);
 
     const leftMediaSfc = generateVueSfc(leftMedia);
     const fullBleedSfc = generateVueSfc(fullBleed);
 
     expect(leftMediaSfc).not.toBe(fullBleedSfc);
-    expect(leftMediaSfc).toMatch(/media-left|grid-template-areas/i);
-    expect(fullBleedSfc).toMatch(/full-bleed|background-size:\s*cover/i);
+    expect(leftMediaSfc).toContain('rr--row');
+    expect(leftMediaSfc).toContain('flex-direction: row');
+    expect(fullBleedSfc).toContain('rr--column');
+    expect(fullBleedSfc).toContain('flex-direction: column');
   });
 
-  it.todo('RCN-02: the full reference screenshot is comparison evidence, never generated page content', () => {
+  it('RCN-02: the full reference screenshot is comparison evidence, never generated page content', () => {
     const page = makeGeneratedPage({ referencePreview: 'blob:complete-source-frame' });
     const { container } = render(GeneratedPagePreview, { props: { page } });
 
     expect(container.querySelector('img[src="blob:complete-source-frame"]')).toBeNull();
     expect(container.querySelector('[style*="complete-source-frame"]')).toBeNull();
+    expect(generatePageHtml(page)).not.toContain('blob:complete-source-frame');
   });
 
   it.todo('RCN-03: Figma and image evidence normalize to the same versioned spatial plan schema', () => {
@@ -150,6 +157,7 @@ const REPRESENTATIVE_FIXTURES = [
 
 function makePlan(
   analysisOverrides: Partial<ReturnType<typeof createDefaultReferenceAnalysis>> = {},
+  reconstruction?: ReturnType<typeof buildFigmaDocumentImport>['reconstruction'],
 ) {
   return buildPagePlan({
     analysis: { ...createDefaultReferenceAnalysis(), ...analysisOverrides },
@@ -158,6 +166,34 @@ function makePlan(
     pageType: 'Landing page',
     referenceName: 'fixture.png',
     tone: 'Source faithful',
+    reconstruction,
+  });
+}
+
+function makeFigmaComposition(layoutMode: 'HORIZONTAL' | 'VERTICAL') {
+  const root: FigmaNode = {
+    id: `root-${layoutMode}`,
+    name: 'Marketing hero',
+    type: 'FRAME',
+    layoutMode,
+    absoluteBoundingBox: { width: 1200, height: 720 },
+    children: [
+      {
+        id: `title-${layoutMode}`,
+        name: 'Hero title',
+        type: 'TEXT',
+        characters: 'A source-dependent page',
+      },
+      {
+        id: `media-${layoutMode}`,
+        name: 'Hero media',
+        type: 'RECTANGLE',
+        fills: [{ type: 'IMAGE' }],
+      },
+    ],
+  };
+  return buildFigmaDocumentImport('Composition fixture', root, null, {
+    [`media-${layoutMode}`]: `https://figma.example/${layoutMode}.png`,
   });
 }
 

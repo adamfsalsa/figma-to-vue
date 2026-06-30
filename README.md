@@ -5,9 +5,11 @@ or similar visual reference as a usable, responsive Vue 3 + TypeScript webpage.
 
 The pipeline is infrastructure for a source-dependent reconstruction system,
 not the final product by itself. The required output is an editable page whose
-structure, styling, media, and interactions materially reflect the source. The
-current broad-template renderer does not yet fulfill that promise. See the
-authoritative [reconstruction contract](docs/reconstruction-contract.md).
+structure, styling, media, and interactions materially reflect the source. A
+first reconstruction-plan v2 path now preserves and renders nested Figma
+structure; image-only references and several fidelity/review gates remain
+incomplete. See the authoritative
+[reconstruction contract](docs/reconstruction-contract.md).
 
 ## Case Study Focus
 

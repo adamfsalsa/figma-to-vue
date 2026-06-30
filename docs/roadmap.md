@@ -8,11 +8,12 @@ authoritative scope and overrides older descriptions of the tool as a scaffolder
 
 These are sequential capability slices, not optional roadmap tiers:
 
-1. **Reconstruction-plan v2** - nested regions/components, geometry, layout,
+1. **Reconstruction-plan v2 (Figma foundation implemented)** - nested regions/components, geometry, layout,
    typography, effects, assets, interactions, responsive constraints,
    provenance, confidence, and overrides.
-2. **Figma evidence mapping** - map nodes and exported assets into plan v2 rather
-   than reducing them to four broad classifications.
+2. **Figma evidence mapping (in progress)** - common nodes, geometry, auto-layout,
+   type, fills, radii, semantics, and image-node renders now map to v2. Continue
+   with variables, variants, effects, grids, constraints, and durable assets.
 3. **Image evidence mapping** - OCR, region/control detection, geometry, asset
    extraction, and confidence into the same plan v2.
 4. **Correction workspace** - inspect and edit hierarchy, types, copy, styles,
