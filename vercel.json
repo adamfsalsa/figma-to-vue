@@ -8,5 +8,10 @@
       "source": "/((?!api/).*)",
       "destination": "/"
     }
-  ]
+  ],
+  "functions": {
+    "api/analyze.ts": {
+      "maxDuration": 30
+    }
+  }
 }

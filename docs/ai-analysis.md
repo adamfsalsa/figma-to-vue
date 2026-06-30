@@ -88,6 +88,14 @@ Implemented now:
   returning complete content. Both halves are validated/sanitized server-side
   (enums dropped if off-list; content trimmed/capped), so a malformed response
   degrades gracefully. `max_tokens` is 1536 to leave room for the generated copy.
+- Timeouts sized for that heavier call: the client (`src/utils/aiAnalysis.ts`)
+  aborts after 25s, and `vercel.json` sets `functions["api/analyze.ts"].
+  maxDuration: 30` so the server-side limit isn't the platform default (10s on
+  Vercel's free tier — too tight for Sonnet vision + content generation plus a
+  cold start). If "Enhance with AI" ever shows *"AI analysis is unavailable
+  right now"* despite the keys being configured, a slow cold-started call
+  timing out is the most likely cause — retrying usually succeeds once the
+  function is warm.
 - The generated `content` flows into `buildPagePlan` as an override, so the
   rendered page (preview, Vue SFC, HTML) shows copy derived from the image
   instead of the deterministic templated placeholder text.
