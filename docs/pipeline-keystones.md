@@ -89,3 +89,21 @@ both reference sources. Verified end-to-end in a real browser (mocked Figma
 import → click Enhance → request body correctly carries `imageUrl` pointing at
 the Figma preview host). 64 tests pass (incl. axe); the live AI call itself
 remains unverified until a key is configured (unchanged from keystone 14).
+
+## 17. AI Reliability — Timeout Fix + Error Diagnosability
+
+The first live run of the AI tier (with valid keys) kept failing with the
+generic *"AI analysis is unavailable right now"* message. Root cause: the
+client-side abort timeout in `src/utils/aiAnalysis.ts` was still **8s** — fine
+for the original classify-only Haiku call, but the Sonnet + content-generation
+call (keystone 14) takes **~8s**, so the browser aborted just before the
+successful response arrived. Fixes: client timeout **8s → 25s**, and a
+`maxDuration: 30` for `api/analyze.ts` in `vercel.json` (it previously fell back
+to the platform's 10s default). Separately, `api/analyze.ts` now surfaces the
+real upstream `providerStatus` + sanitized message on a `provider_error`, so a
+bad key (401), missing credit (403), unknown model (404), or rejected image
+(400) is diagnosable from the response instead of a generic 502. **The AI tier
+is now verified working end to end on the live deployment** (a real reference
+returned HTTP 200 with full analysis + generated copy in ~8s). The reusable
+diagnosis method (curl the live endpoint, watch HTTP status + total time) and a
+"Key flags for API errors" reference live in `docs/troubleshooting-ai.md`.

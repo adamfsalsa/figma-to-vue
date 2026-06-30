@@ -95,7 +95,8 @@ Implemented now:
   cold start). If "Enhance with AI" ever shows *"AI analysis is unavailable
   right now"* despite the keys being configured, a slow cold-started call
   timing out is the most likely cause — retrying usually succeeds once the
-  function is warm.
+  function is warm. For the full diagnosis method and an error-flag reference,
+  see `docs/troubleshooting-ai.md`.
 - The generated `content` flows into `buildPagePlan` as an override, so the
   rendered page (preview, Vue SFC, HTML) shows copy derived from the image
   instead of the deterministic templated placeholder text.

@@ -5,6 +5,24 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Fixed — Claude (Anthropic) (2026-06-30)
+
+- "Enhance with AI" failed on the live deployment with a generic "unavailable"
+  message even with valid keys: the client abort timeout (8s) was shorter than
+  a real Sonnet + content-generation call (~8s). Raised the client timeout to
+  25s and set `maxDuration: 30` for `api/analyze.ts` in `vercel.json`.
+- `api/analyze.ts` now surfaces the real upstream provider HTTP status and a
+  sanitized message on a `provider_error`, so a bad key, missing credit, unknown
+  model, or rejected image is diagnosable from the response. The frontend shows
+  the provider status in its message. Neither field can contain the API key.
+- Verified the AI tier works end to end on the live deployment.
+
+### Documentation — Claude (Anthropic) (2026-06-30)
+
+- Added `docs/troubleshooting-ai.md`: the resolved-incident write-up, the
+  reusable diagnosis method (curl the live endpoint, watch HTTP status + total
+  time), and a "Key flags for API errors" reference table. Keystone 17 added.
+
 ### Added — Claude (Anthropic) (2026-06-26 to 2026-06-29)
 
 - Real local color/token extraction from uploaded image pixels (no LLM, no key).

@@ -1,7 +1,8 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after wiring
-the optional AI tier to Figma-imported references (keystone 16).
+Single entry point for whoever picks this up next. Last updated after the AI
+tier was verified working end to end on the live deployment and an AI-failure
+troubleshooting reference was added (keystone 17).
 
 ## Current State
 
@@ -61,8 +62,16 @@ smaller, already-scoped follow-ups are below.
 
 Consolidated from the per-doc "Next Step" sections:
 
-- **AI tier is not runtime-verified.** No live billed call has been made from
-  this codebase; the first real call on Vercel is the integration smoke test.
+- **AI tier is verified live** (no longer an open item). A real reference image
+  on the deployed site returns HTTP 200 with full analysis + generated copy in
+  ~8s. If "Enhance with AI" ever misbehaves, `docs/troubleshooting-ai.md` has the
+  diagnosis method and a "Key flags for API errors" table.
+- **AI changes content, not visual design (by design).** The model generates the
+  page copy and classifies the layout; colors come from local pixel extraction
+  and the layout/typography is a fixed deterministic template. So an AI-enhanced
+  preview reads differently but looks structurally the same as the templated
+  one. A visually-bespoke "the AI redesigns the page" mode is a larger,
+  intentionally-unbuilt "Level 3" (the model writing actual layout/CSS).
 - **Standalone preview:** the styled HTML export (`src/utils/htmlExport.ts`) is
   now a real `h1`-rooted page with the CTA, but the live preview overlay still
   renders the in-app `h3`/`h4` component. Add an "open in new tab" action that
@@ -104,6 +113,13 @@ npm run dev        # local preview at http://localhost:5173
 
 ## Agent Ownership Log
 
+- **Claude (Anthropic) — 2026-06-30:** verified the AI tier end to end on the
+  live deployment and fixed the reliability bug that blocked it — the client
+  abort timeout was 8s while a real Sonnet call takes ~8s, so the browser
+  aborted just before the successful response. Bumped the client timeout to 25s,
+  added `maxDuration: 30` in `vercel.json`, and made `api/analyze.ts` surface
+  the real upstream provider status on failures. Added `docs/troubleshooting-ai.md`
+  (diagnosis method + "Key flags for API errors"). See keystone 17.
 - **Claude (Anthropic) — 2026-06-29:** wired the optional AI tier
   (`api/analyze.ts`) to also accept Figma-imported references — a server-side
   fetch of the Figma-returned preview URL, restricted to Figma's own hosts
