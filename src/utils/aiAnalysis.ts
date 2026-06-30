@@ -11,6 +11,7 @@ interface AnalyzeApiPayload {
   content?: GeneratedContent;
   reason?: string;
   message?: string;
+  providerStatus?: number;
 }
 
 // 8s was tuned for the original lightweight classify-only Haiku call
@@ -48,10 +49,14 @@ export async function requestAiAnalysis(source: AiAnalysisSource): Promise<AiAna
     const payload: AnalyzeApiPayload | null = await response.json().catch(() => null);
 
     if (!response.ok || !payload || payload.ok !== true) {
+      const base = payload?.message ?? 'AI analysis is unavailable right now. Using local analysis instead.';
+      // Surface the upstream HTTP status on a provider failure so a bad key
+      // (401) or billing/access issue (403) is visible in the UI, not silent.
+      const detail = payload?.providerStatus ? ` (provider status ${payload.providerStatus})` : '';
       return {
         ok: false,
         reason: payload?.reason ?? 'network_error',
-        message: payload?.message ?? 'AI analysis is unavailable right now. Using local analysis instead.',
+        message: base + detail,
       };
     }
 

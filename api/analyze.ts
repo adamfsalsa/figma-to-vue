@@ -74,6 +74,15 @@ type AnalyzeErrorResponse = {
   ok: false;
   reason: 'method_not_allowed' | 'invalid_request' | 'rate_limited' | 'not_configured' | 'provider_error';
   message: string;
+  /**
+   * On a provider_error, the underlying Anthropic HTTP status (e.g. 401 = bad
+   * key, 403 = no credit/model access, 404 = unknown model, 429 = rate limit)
+   * and a sanitized snippet of the provider's own message. These never contain
+   * the API key — they make a misconfigured key diagnosable from the response
+   * instead of a generic 502.
+   */
+  providerStatus?: number;
+  providerError?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -503,10 +512,21 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return;
     }
 
+    // Surface the underlying provider failure so a misconfigured key, missing
+    // credit, or unknown model is diagnosable from the response. The Anthropic
+    // SDK throws errors carrying an HTTP `status` and a `message`; neither
+    // contains the API key.
+    const providerStatus = typeof (error as { status?: unknown })?.status === 'number'
+      ? (error as { status: number }).status
+      : undefined;
+    const providerError = error instanceof Error ? error.message.slice(0, 300) : undefined;
+
     respond(res, 502, {
       ok: false,
       reason: 'provider_error',
       message: 'The AI analysis provider failed. Falling back to local analysis is recommended.',
+      providerStatus,
+      providerError,
     });
   }
 }
