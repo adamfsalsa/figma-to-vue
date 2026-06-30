@@ -1,10 +1,13 @@
 # Figma to Vue AI Pipeline
 
-An AI-assisted portfolio case study that translates an exported Figma frame,
-screenshot, or similar visual reference into a production-minded Vue 3 +
-TypeScript webpage.
+An AI-assisted portfolio case study that reconstructs a Figma frame, screenshot,
+or similar visual reference as a usable, responsive Vue 3 + TypeScript webpage.
 
-The project is intentionally framed as a pipeline, not a clone. The goal is to demonstrate how design intake, basic LLM-assisted formatting prompts, token extraction, accessible implementation, Git review, and deployment can work together on a realistic frontend workflow.
+The pipeline is infrastructure for a source-dependent reconstruction system,
+not the final product by itself. The required output is an editable page whose
+structure, styling, media, and interactions materially reflect the source. The
+current broad-template renderer does not yet fulfill that promise. See the
+authoritative [reconstruction contract](docs/reconstruction-contract.md).
 
 ## Case Study Focus
 
@@ -38,10 +41,16 @@ Figma REST setup and security boundaries are documented in
 
 The application can read a shared Figma file or frame through the server-side
 REST integration when `FIGMA_ACCESS_TOKEN` is configured. It extracts the node
-tree and common layout/content signals, but it does not yet import Figma
-variables or reproduce every constraint and prototype interaction. It does not
-write Git commits or deploy generated output; JSON, HTML, and Vue output are
-copied to the clipboard for human review.
+tree and common layout/content signals. Image intake uses pixels plus editable
+inference. Both routes are required to produce a real page through one normalized
+reconstruction plan. Uncertainty in image analysis must be exposed for review;
+it is not a reason to fall back permanently to a generic template.
+
+The project does not need to invent hidden backend behavior, import every Figma
+variable, or reproduce undocumented prototype logic. It does need to reconstruct
+the visible page, its responsive layout, and demonstrable interactions. It does
+not write Git commits or deploy generated output automatically; JSON, HTML, and
+Vue output remain human-reviewed artifacts.
 
 ## Work Attribution
 

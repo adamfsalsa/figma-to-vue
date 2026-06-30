@@ -1,5 +1,9 @@
 # Static Preview Generation
 
+> **Milestone record:** this page describes the deterministic v1 preview, not
+> the product's completion boundary. A source-dependent usable page is required
+> by `docs/reconstruction-contract.md`.
+
 This milestone turns the intake brief into a deterministic one-page preview inside the app.
 
 ## What Works

@@ -1,5 +1,10 @@
 # Live Preview
 
+> **Current implementation, not final scope:** the preview demonstrates the
+> page-plan v1 renderer. It is not a faithful reconstruction while it displays
+> the whole reference image and renders one of four broad shells. See keystone
+> 18 and `docs/reconstruction-contract.md`.
+
 This milestone adds a one-click, full-screen preview of the generated page so a
 non-coder can see and interact with the result in real time — not just read the
 JSON, HTML, and Vue code panels.
@@ -27,8 +32,9 @@ than being decorative:
 | Form-first | an accessible email field + submit button ("Sign up") |
 | None visible | no CTA |
 
-This gives a non-coder something tangible to hover and click, and keeps the
-preview faithful to what was detected in the reference.
+This gives a non-coder something tangible to hover and click. Today it reflects
+the detected copy, palette, CTA type, and broad layout classification; it does
+not yet preserve the source's full structure or visual composition.
 
 ## Accessibility
 

@@ -1,5 +1,10 @@
 # Vue Component Generation
 
+> **Current implementation, not final scope:** this generator proves safe Vue
+> export from page-plan v1, but its four variants are not sufficient to fulfill
+> the source-dependent reconstruction requirement. Keystone 18 and
+> `docs/reconstruction-contract.md` define the required replacement.
+
 This milestone turns the constrained JSON page plan into a real, standalone
 Vue 3 single-file component — the actual "one-shot Vue output" the pipeline is
 named for.
@@ -20,8 +25,10 @@ complete `.vue` file as a string:
   `--token-accent` / `--token-surface-soft` custom properties, with hardcoded
   fallbacks when no image has been analyzed.
 
-The component's *shape* is chosen from the analyzer's observed `layoutPattern`,
-so the structure matches the design rather than being one fixed layout:
+The component's broad variant is chosen from the analyzer's `layoutPattern`.
+This creates four distinguishable shells, but it does not yet reconstruct the
+source's actual region tree, geometry, component hierarchy, or responsive
+constraints:
 
 | `layoutPattern` | Root modifier | Section shape |
 | --- | --- | --- |

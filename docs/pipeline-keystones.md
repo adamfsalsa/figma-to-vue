@@ -41,7 +41,7 @@ The analysis step is now two tiers. Tier 1 is the always-on, no-LLM local color/
 
 ## 10. Vue Component Generation
 
-The one-shot output now includes a real Vue 3 single-file component, not just an HTML string. A pure, deterministic generator (`src/utils/vueCodegen.ts`) turns the page plan into a complete `.vue` file — typed `<script setup>`, semantic `<template>`, and `<style scoped>` that bakes the extracted palette into custom properties. The component's shape is chosen from the observed `layoutPattern` (single hero, feature cards, dashboard grid, or finder flow), so the structure matches the design. A "Copy Vue component" button and a code panel surface it in the app. See `docs/vue-codegen.md`.
+The one-shot output now includes a real Vue 3 single-file component, not just an HTML string. A pure, deterministic generator (`src/utils/vueCodegen.ts`) turns the page plan into a complete `.vue` file — typed `<script setup>`, semantic `<template>`, and `<style scoped>` that bakes the extracted palette into custom properties. The component selects one of four broad shapes from the observed `layoutPattern` (single hero, feature cards, dashboard grid, or finder flow). This proves layout-aware export but is only a precursor to the source-dependent structure required by keystone 18. A "Copy Vue component" button and a code panel surface it in the app. See `docs/vue-codegen.md`.
 
 ## 11. Live Preview
 
@@ -107,3 +107,24 @@ is now verified working end to end on the live deployment** (a real reference
 returned HTTP 200 with full analysis + generated copy in ~8s). The reusable
 diagnosis method (curl the live endpoint, watch HTTP status + total time) and a
 "Key flags for API errors" reference live in `docs/troubleshooting-ai.md`.
+
+## 18. Source-Dependent Page Reconstruction (CORE, NOT COMPLETE)
+
+**Product requirement clarified 2026-06-30; owner: OpenAI Codex for scope and
+acceptance contract.** Figma URLs and reference images must both produce a real,
+usable, responsive Vue page that materially reflects the source's region tree,
+composition, content, styles, media, and visible interactions. They must converge
+on one normalized reconstruction-plan schema with provenance, confidence, and
+user corrections.
+
+This is not a future Level 3 expansion. It is the completion criterion for the
+core project. The existing four-layout renderer, generated copy, palette transfer,
+and reference-image preview prove pieces of the pipeline but do not meet this
+keystone: unrelated sources can still produce effectively identical markup, and
+the reference screenshot can be displayed as content rather than reconstructed.
+
+The authoritative feature breakdown, safety boundary, twelve release gates, and
+fixture requirements are in `docs/reconstruction-contract.md`. The executable
+acceptance backlog is `tests/reconstructionAcceptance.test.ts`. This keystone is
+complete only when all `RCN-*` gates pass; `todo` cases are blockers, not optional
+enhancements.

@@ -1,16 +1,18 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after the AI
-tier was verified working end to end on the live deployment and an AI-failure
-troubleshooting reference was added (keystone 17).
+Single entry point for whoever picks this up next. Last updated after the core
+reconstruction scope was clarified (keystone 18).
 
 ## Current State
 
-The pipeline runs end to end. `main` is the source of truth; feature work
-through AI page generation and interactive dropdowns has been merged.
+The pipeline runs end to end, but the product is **not feature-complete**. `main`
+is the source of truth; Figma intake, AI page-copy generation, and interactive
+dropdown work have been merged. The current renderer remains a small set of
+broad templates and does not yet reconstruct source-dependent page structure.
 
-- **Build / typecheck / tests all green:** `npm run build`, `npm run typecheck`,
-  `npm run test` (64 tests across 12 files) pass.
+- **Build / typecheck / implemented tests all green:** `npm run build`,
+  `npm run typecheck`, `npm run test` report 64 passing tests plus 12 explicit
+  reconstruction-contract todos across 13 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
@@ -53,25 +55,29 @@ See `.env.example` and `docs/deployment.md`.
 Figma URL intake separately requires a server-side `FIGMA_ACCESS_TOKEN` with
 `file_content:read`. The token is never returned to or stored by the browser.
 
-## What's Next
+## Required Next: Complete Reconstruction
 
-A prioritized, forward-looking feature list lives in **`docs/roadmap.md`**. The
-smaller, already-scoped follow-ups are below.
+The non-negotiable next phase is keystone 18: both Figma and image references
+must produce usable, responsive pages whose DOM, CSS, media, and interactions
+materially match their sources. This is the core product, not a later fidelity
+upgrade. Read **`docs/reconstruction-contract.md` before changing the plan,
+renderer, preview, AI prompt, or roadmap**.
 
-## Open Follow-Ups (nothing is blocking)
+Implementation must introduce a normalized spatial/component reconstruction
+plan, reviewable confidence and corrections, a source-dependent renderer,
+responsive and interaction reconstruction, and structural/visual/accessibility
+validation. `tests/reconstructionAcceptance.test.ts` records the release gates.
 
-Consolidated from the per-doc "Next Step" sections:
+## Secondary Follow-Ups
 
 - **AI tier is verified live** (no longer an open item). A real reference image
   on the deployed site returns HTTP 200 with full analysis + generated copy in
   ~8s. If "Enhance with AI" ever misbehaves, `docs/troubleshooting-ai.md` has the
   diagnosis method and a "Key flags for API errors" table.
-- **AI changes content, not visual design (by design).** The model generates the
-  page copy and classifies the layout; colors come from local pixel extraction
-  and the layout/typography is a fixed deterministic template. So an AI-enhanced
-  preview reads differently but looks structurally the same as the templated
-  one. A visually-bespoke "the AI redesigns the page" mode is a larger,
-  intentionally-unbuilt "Level 3" (the model writing actual layout/CSS).
+- **Current renderer changes content more than visual structure.** This is a
+  known blocking gap, not a deliberate final design. Keystone 18 replaces the
+  fixed-template approach with validated plan-driven reconstruction; the model
+  still does not write or execute arbitrary CSS/code.
 - **Standalone preview:** the styled HTML export (`src/utils/htmlExport.ts`) is
   now a real `h1`-rooted page with the CTA, but the live preview overlay still
   renders the in-app `h3`/`h4` component. Add an "open in new tab" action that
@@ -83,9 +89,6 @@ Consolidated from the per-doc "Next Step" sections:
 - **Structured outputs:** the AI call uses prompt-plus-validate; switch to
   `output_config.format` once the SDK types it on GA messages.
   (`docs/ai-analysis.md`)
-- **Content fidelity:** the optional AI path generates or adapts copy from the
-  image; the no-AI fallback remains templated. Exact OCR and pixel-level layout
-  reproduction remain out of scope.
 - **Deploy status panel:** keystone 8's original idea (surface the production
   URL / deploy state in-app) is still unbuilt.
 
@@ -104,7 +107,7 @@ Consolidated from the per-doc "Next Step" sections:
 
 ```bash
 npm install
-npm run test       # 64 tests
+npm run test       # 64 passing + 12 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -112,6 +115,11 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **OpenAI Codex - 2026-06-30:** reconstruction scope contract on
+  `codex/reconstruction-contract`; made source-dependent usable-page output the
+  core completion criterion, documented the implementation breakdown and safety
+  boundary, and added twelve executable release-blocking acceptance cases.
 
 - **Claude (Anthropic) — 2026-06-30:** verified the AI tier end to end on the
   live deployment and fixed the reliability bug that blocked it — the client

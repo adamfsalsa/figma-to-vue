@@ -5,6 +5,17 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Product contract and tests - OpenAI Codex (2026-06-30)
+
+- Establish source-dependent, usable-page reconstruction from both Figma and
+  reference images as the non-negotiable core completion criterion.
+- Document the normalized plan, correction UI, renderer, interaction,
+  responsive, safety, validation, and fixture work required to complete it.
+- Add twelve `RCN-*` release-blocking acceptance cases as an executable backlog;
+  they remain `todo` until the corresponding reconstruction behavior exists.
+- Remove handoff and roadmap language that incorrectly classified faithful
+  reconstruction as a later-tier enhancement or deliberate non-goal.
+
 ### Fixed — Claude (Anthropic) (2026-06-30)
 
 - "Enhance with AI" failed on the live deployment with a generic "unavailable"
