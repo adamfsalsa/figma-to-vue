@@ -1,5 +1,5 @@
-import { buildFigmaDocumentImport, parseFigmaUrl, type FigmaNode } from '../src/utils/figmaDocument';
-import type { FigmaDocumentImport } from '../src/types/figmaImport';
+import { buildFigmaDocumentImport, parseFigmaUrl, type FigmaNode } from '../src/utils/figmaDocument.js';
+import type { FigmaDocumentImport } from '../src/types/figmaImport.js';
 
 interface ApiRequest {
   method?: string;

@@ -1,5 +1,5 @@
-import type { ReferenceAnalysis } from './referenceAnalysis';
-import type { VisualTokens } from './visualTokens';
+import type { ReferenceAnalysis } from './referenceAnalysis.js';
+import type { VisualTokens } from './visualTokens.js';
 
 export type VisualDensity = 'Comfortable' | 'Compact' | 'Editorial';
 

@@ -1,7 +1,7 @@
-import type { FigmaDocumentImport } from '../types/figmaImport';
-import type { GeneratedContent } from '../types/pagePlan';
-import type { CtaStyle, LayoutPattern, ReferenceAnalysis } from '../types/referenceAnalysis';
-import type { VisualTokens } from '../types/visualTokens';
+import type { FigmaDocumentImport } from '../types/figmaImport.js';
+import type { GeneratedContent } from '../types/pagePlan.js';
+import type { CtaStyle, LayoutPattern, ReferenceAnalysis } from '../types/referenceAnalysis.js';
+import type { VisualTokens } from '../types/visualTokens.js';
 
 export interface ParsedFigmaUrl {
   fileKey: string;

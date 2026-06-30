@@ -15,6 +15,8 @@ can be reviewed and merged without ambiguity.
 
 ### Fixed — OpenAI Codex (2026-06-29)
 
+- Fix the deployed Figma serverless function's Node ESM import resolution and
+  add a compiled runtime smoke check to every production build.
 - Reset Product-finder preview selection and result state whenever a newly
   generated page replaces the current page.
 - Rebuild inline and live previews from the latest form inputs instead of

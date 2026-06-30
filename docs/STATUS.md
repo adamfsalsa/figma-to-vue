@@ -93,6 +93,7 @@ Consolidated from the per-doc "Next Step" sections:
 ```bash
 npm install
 npm run test       # 60 tests
+npm run test:api-runtime
 npm run typecheck
 npm run build
 npm run dev        # local preview at http://localhost:5173
@@ -108,3 +109,6 @@ npm run dev        # local preview at http://localhost:5173
   `codex/figma-url-intake`; added server-only token handling, file/frame URL
   parsing, node and rendered-image retrieval, structured design extraction,
   editable inferred content, and end-to-end regression coverage.
+- **OpenAI Codex — 2026-06-29:** production ESM hotfix on
+  `codex/fix-figma-runtime-import`; corrected serverless dependency specifiers
+  and added a compiled Node runtime smoke check to the build gate.

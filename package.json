@@ -6,10 +6,11 @@
   "description": "AI-assisted Figma to Vue 3 TypeScript pipeline case study for an accessible Trek-inspired finder.",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "npm run test:api-runtime && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:api-runtime": "tsc -p tsconfig.api.json && node scripts/check-api-runtime.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
