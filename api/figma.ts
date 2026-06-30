@@ -32,6 +32,11 @@ interface FigmaImagesResponse {
   images?: Record<string, string | null>;
 }
 
+const MAX_EMBEDDED_ASSET_BYTES = 600_000;
+const MAX_EMBEDDED_TOTAL_BYTES = 2_250_000;
+const ASSET_FETCH_TIMEOUT_MS = 5_000;
+const EMBEDDABLE_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
 class FigmaApiError extends Error {
   constructor(public readonly status: number) {
     super(`Figma API returned ${status}`);
@@ -76,7 +81,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       token,
     ).catch((): Record<string, string | null> => ({}));
     const previewUrl = renderedImages[node.id] ?? thumbnailUrl;
-    const assetUrls = Object.fromEntries(assetNodeIds.map((id) => [id, renderedImages[id] ?? null]));
+    const remoteAssetUrls = Object.fromEntries(assetNodeIds.map((id) => [id, renderedImages[id] ?? null]));
+    const assetUrls = await materializeFigmaAssets(remoteAssetUrls);
     const document: FigmaDocumentImport = buildFigmaDocumentImport(fileName, node, previewUrl, assetUrls);
     respond(res, 200, { ok: true, document });
   } catch (error) {
@@ -139,10 +145,64 @@ async function fetchRenderedImages(
 ): Promise<Record<string, string | null>> {
   if (nodeIds.length === 0) return {};
   const payload = await figmaFetch<FigmaImagesResponse>(
-    `/v1/images/${encodeURIComponent(fileKey)}?ids=${encodeURIComponent(nodeIds.join(','))}&format=png&scale=2`,
+    `/v1/images/${encodeURIComponent(fileKey)}?ids=${encodeURIComponent(nodeIds.join(','))}&format=png&scale=1`,
     token,
   );
   return payload.images ?? {};
+}
+
+/** Only Figma-owned HTTPS CDN URLs may be fetched for asset embedding. */
+export function isAllowedFigmaAssetHost(input: string): boolean {
+  try {
+    const url = new URL(input);
+    return url.protocol === 'https:'
+      && (url.hostname === 'figma.com' || url.hostname.endsWith('.figma.com'));
+  } catch {
+    return false;
+  }
+}
+
+export async function materializeFigmaAssets(
+  remoteAssets: Record<string, string | null>,
+): Promise<Record<string, string | null>> {
+  const entries = Object.entries(remoteAssets);
+  const fetched = await Promise.all(entries.map(async ([id, url]) => {
+    if (!url || !isAllowedFigmaAssetHost(url)) return { id, url, embedded: null };
+    const embedded = await fetchEmbeddedAsset(url).catch(() => null);
+    return { id, url, embedded };
+  }));
+
+  let totalBytes = 0;
+  return Object.fromEntries(fetched.map(({ id, url, embedded }) => {
+    if (!embedded || totalBytes + embedded.rawBytes > MAX_EMBEDDED_TOTAL_BYTES) {
+      return [id, url];
+    }
+    totalBytes += embedded.rawBytes;
+    return [id, embedded.dataUrl];
+  }));
+}
+
+async function fetchEmbeddedAsset(
+  url: string,
+): Promise<{ dataUrl: string; rawBytes: number }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ASSET_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { redirect: 'error', signal: controller.signal });
+    if (!response.ok) throw new Error('FIGMA_ASSET_FETCH_FAILED');
+    const contentType = (response.headers.get('content-type') ?? '').split(';')[0].toLowerCase();
+    if (!EMBEDDABLE_IMAGE_TYPES.has(contentType)) throw new Error('FIGMA_ASSET_TYPE_REJECTED');
+    const declaredSize = Number(response.headers.get('content-length') ?? 0);
+    if (declaredSize > MAX_EMBEDDED_ASSET_BYTES) throw new Error('FIGMA_ASSET_TOO_LARGE');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > MAX_EMBEDDED_ASSET_BYTES) throw new Error('FIGMA_ASSET_TOO_LARGE');
+    return {
+      rawBytes: buffer.byteLength,
+      dataUrl: `data:${contentType};base64,${buffer.toString('base64')}`,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function figmaFetch<T>(path: string, token: string): Promise<T> {

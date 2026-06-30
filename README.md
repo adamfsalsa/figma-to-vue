@@ -18,8 +18,8 @@ incomplete. See the authoritative
 - Server-side Figma file/frame URL intake with structured layer, text,
   component, auto-layout, fill-color, and rendered-preview extraction
 - Figma reconstruction-plan v2 with nested geometry, constraints, sizing,
-  grids, effects, component metadata, independent assets, and native controls
-  rendered consistently across preview, Vue, and HTML
+  grids, effects, component metadata, bounded embedded assets, and native
+  controls rendered consistently across preview, Vue, and HTML
 - Human-guided reference analyzer for visible design observations
 - Local, no-LLM color/token extraction from the uploaded reference image
 - Optional "Enhance with AI" tier: a key-safe Vercel proxy that calls `claude-sonnet-4-6`, gated behind durable rate limiting and a prepaid spend cap (dormant until configured)

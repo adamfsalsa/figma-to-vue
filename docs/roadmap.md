@@ -12,8 +12,9 @@ These are sequential capability slices, not optional roadmap tiers:
    typography, effects, assets, interactions, responsive constraints,
    provenance, confidence, and overrides.
 2. **Figma evidence mapping (in progress)** - common nodes, geometry, auto-layout,
-   type, fills, radii, semantics, and image-node renders now map to v2. Continue
-   with variables, variants, effects, grids, constraints, and durable assets.
+   sizing, constraints, grids, effects, controls, component metadata, and
+   bounded durable image-node renders now map to v2. Continue with variables,
+   full component-set semantics, vectors, gradients, and oversized-asset delivery.
 3. **Image evidence mapping** - OCR, region/control detection, geometry, asset
    extraction, and confidence into the same plan v2.
 4. **Correction workspace** - inspect and edit hierarchy, types, copy, styles,

@@ -111,8 +111,13 @@ describe('Figma document intake', () => {
       element: 'media',
       tag: 'img',
       style: { borderRadius: 24 },
-      asset: { url: 'https://example.com/hero.png', sourceNodeId: '12:40' },
+      asset: {
+        url: 'https://example.com/hero.png',
+        sourceNodeId: '12:40',
+        delivery: 'remote',
+      },
     });
+    expect(imported.reconstruction.confidence.reviewRequired).toContain('12:40');
     expect(rootRegion.children[0].children[1]).toMatchObject({
       tag: 'h1',
       text: 'Choose the right bike for every road',

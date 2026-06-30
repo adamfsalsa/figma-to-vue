@@ -87,7 +87,9 @@ export interface ReconstructionStyle {
 
 export interface ReconstructionAsset {
   alt: string;
+  delivery: 'embedded' | 'remote' | 'missing';
   kind: 'image';
+  mimeType?: string;
   sourceNodeId: string;
   url: string | null;
 }

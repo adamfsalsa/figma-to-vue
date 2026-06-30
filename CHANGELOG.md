@@ -21,6 +21,11 @@ can be reviewed and merged without ambiguity.
   transforms, component IDs, and variant-property metadata.
 - Translate clearly named Figma buttons, links, and input/search/email/password
   fields into native accessible controls across preview, Vue, and HTML output.
+- Materialize allowed Figma CDN image-node renders into durable embedded assets
+  under strict per-asset and total response budgets; mark oversized/failed
+  fallbacks as remote and review-required.
+- Add a fixed-origin asset-fetch allowlist, redirect rejection, MIME validation,
+  byte limits, timeouts, and a 30-second Figma serverless-function ceiling.
 
 ### Product contract and tests - OpenAI Codex (2026-06-30)
 

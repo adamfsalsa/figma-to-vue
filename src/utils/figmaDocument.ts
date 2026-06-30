@@ -178,7 +178,7 @@ export function buildFigmaDocumentImport(
  * The selected root frame is intentionally excluded: it is comparison
  * evidence, not an asset that may stand in for the generated page.
  */
-export function collectFigmaAssetNodeIds(root: FigmaNode, limit = 24): string[] {
+export function collectFigmaAssetNodeIds(root: FigmaNode, limit = 12): string[] {
   return flattenVisibleNodes(root)
     .filter((node) => node.id !== root.id && hasImageFill(node))
     .slice(0, limit)
@@ -201,7 +201,9 @@ function buildReconstructionPlan(
     regions: [mapFigmaRegion(root, assetUrls, { headingCount: 0, remaining: MAX_SCANNED_NODES }, 0, true)],
     confidence: {
       overall: 0.9,
-      reviewRequired: collectFigmaAssetNodeIds(root).filter((id) => !assetUrls[id]),
+      reviewRequired: collectFigmaAssetNodeIds(root).filter((id) =>
+        !assetUrls[id]?.startsWith('data:image/'),
+      ),
     },
     overrides: {},
   };
@@ -258,6 +260,8 @@ function mapFigmaRegion(
       sourceNodeId: node.id,
       url: assetUrls[node.id] ?? null,
       alt: inferAssetAlt(node.name),
+      delivery: assetDelivery(assetUrls[node.id]),
+      ...(assetMimeType(assetUrls[node.id]) ? { mimeType: assetMimeType(assetUrls[node.id]) } : {}),
     };
   }
 
@@ -573,6 +577,16 @@ function inferControl(
 
 function inferAssetAlt(name: string): string {
   return /background|decoration|texture|shape/i.test(name) ? '' : name;
+}
+
+function assetDelivery(url: string | null | undefined): 'embedded' | 'remote' | 'missing' {
+  if (!url) return 'missing';
+  return url.startsWith('data:image/') ? 'embedded' : 'remote';
+}
+
+function assetMimeType(url: string | null | undefined): string | undefined {
+  if (!url?.startsWith('data:')) return undefined;
+  return /^data:([^;,]+)/.exec(url)?.[1];
 }
 
 function finiteOrNull(value: number | undefined): number | null {

@@ -1,4 +1,4 @@
-import handler from '../api/figma';
+import handler, { isAllowedFigmaAssetHost, materializeFigmaAssets } from '../api/figma';
 
 function createResponseRecorder() {
   let statusCode = 0;
@@ -40,6 +40,32 @@ describe('Figma server endpoint', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('only allows Figma-owned HTTPS hosts for server-side asset materialization', () => {
+    expect(isAllowedFigmaAssetHost('https://s3-alpha-sig.figma.com/image.png')).toBe(true);
+    expect(isAllowedFigmaAssetHost('https://figma.com/image.png')).toBe(true);
+    expect(isAllowedFigmaAssetHost('http://figma.com/image.png')).toBe(false);
+    expect(isAllowedFigmaAssetHost('https://figma.com.evil.example/image.png')).toBe(false);
+    expect(isAllowedFigmaAssetHost('not a url')).toBe(false);
+  });
+
+  it('leaves oversized and non-Figma assets remote instead of embedding them', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('oversized', {
+      status: 200,
+      headers: { 'Content-Type': 'image/png', 'Content-Length': '700000' },
+    }));
+
+    const result = await materializeFigmaAssets({
+      oversized: 'https://s3-alpha-sig.figma.com/oversized.png',
+      untrusted: 'https://evil.example/image.png',
+    });
+
+    expect(result).toEqual({
+      oversized: 'https://s3-alpha-sig.figma.com/oversized.png',
+      untrusted: 'https://evil.example/image.png',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reads a selected node and rendered preview with the server-only token', async () => {
     process.env.FIGMA_ACCESS_TOKEN = 'server-secret';
     const fetchMock = vi.spyOn(globalThis, 'fetch')
@@ -62,9 +88,13 @@ describe('Figma server endpoint', () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({
         images: {
           '1:2': 'https://figma.example/render.png',
-          '1:4': 'https://figma.example/product.png',
+          '1:4': 'https://s3-alpha-sig.figma.com/product.png',
         },
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([137, 80, 78, 71]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/png', 'Content-Length': '4' },
+      }));
     const recorder = createResponseRecorder();
 
     await handler(
@@ -88,19 +118,28 @@ describe('Figma server endpoint', () => {
             {
               children: [
                 {},
-                { asset: { sourceNodeId: '1:4', url: 'https://figma.example/product.png' } },
+                {
+                  asset: {
+                    sourceNodeId: '1:4',
+                    url: 'data:image/png;base64,iVBORw==',
+                    delivery: 'embedded',
+                    mimeType: 'image/png',
+                  },
+                },
               ],
             },
           ],
         },
       },
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/v1/files/ABC123/nodes');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('depth=10');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       headers: { 'X-Figma-Token': 'server-secret' },
     });
     expect(fetchMock.mock.calls[1]?.[0]).toContain(encodeURIComponent('1:2,1:4'));
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('https://s3-alpha-sig.figma.com/product.png');
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ redirect: 'error' });
   });
 });

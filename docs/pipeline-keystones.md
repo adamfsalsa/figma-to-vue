@@ -142,3 +142,9 @@ wrapping, inferred grids, clipping, stroke widths, shadows, blur, text
 transforms, component IDs/variant properties, and accessible native intent for
 clearly identified links, buttons, and inputs. This remains Figma-only work;
 image parity is not included in this checkpoint.
+
+**Durable asset checkpoint (OpenAI Codex, 2026-06-30):** independent Figma
+image-node renders are now embedded when they pass the fixed Figma-host, MIME,
+redirect, timeout, and byte-budget checks. Remote fallbacks carry explicit
+delivery provenance and enter `reviewRequired`; the complete frame remains a
+temporary comparison image and is never used as generated-page content.

@@ -217,6 +217,7 @@ function makeReconstructionPlan(mode: 'row' | 'column' = 'row'): ReconstructionP
             style: { borderRadius: 24 },
             asset: {
               kind: 'image',
+              delivery: 'remote',
               sourceNodeId: 'media',
               url: 'https://figma.example/hero-asset.png',
               alt: 'Cyclist on a gravel road',

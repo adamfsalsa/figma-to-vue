@@ -11,7 +11,7 @@ dropdown work have been merged. Figma imports now have a source-dependent v2
 renderer; image-only references still fall back to the broad v1 templates.
 
 - **Build / typecheck / implemented tests all green:** `npm run build`,
-  `npm run typecheck`, `npm run test` report 71 passing tests plus 10 explicit
+  `npm run typecheck`, `npm run test` report 73 passing tests plus 10 explicit
   reconstruction-contract todos across 14 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
@@ -48,6 +48,9 @@ renderer; image-only references still fall back to the broad v1 templates.
     dimensions, wrapping, inferred grids, clipping, strokes, shadows, blur,
     text transforms, component/variant metadata, and native controls now flow
     through the shared renderer.
+12. **Bounded durable Figma assets** — eligible Figma-owned image-node renders
+    are embedded as data URLs under per-asset/total response caps. Remote,
+    oversized, or failed assets remain visible but are marked review-required.
 
 ## To Enable the AI Tier (operator, optional)
 
@@ -63,6 +66,8 @@ See `.env.example` and `docs/deployment.md`.
 
 Figma URL intake separately requires a server-side `FIGMA_ACCESS_TOKEN` with
 `file_content:read`. The token is never returned to or stored by the browser.
+**Vercel audit on 2026-06-30:** this variable is not currently configured, so a
+real deployed Figma import cannot be smoke-tested yet.
 
 ## Required Next: Complete Reconstruction
 
@@ -78,10 +83,10 @@ responsive and interaction reconstruction, and structural/visual/accessibility
 validation. `tests/reconstructionAcceptance.test.ts` records the release gates.
 
 The first two Figma slices are implemented. For the active Figma-only work,
-continue with component-set/variant semantics, richer constraints and effects,
-durable asset materialization, correction/override state, and browser-level
-responsive/visual comparison. Image parity remains part of the overall product
-contract but is not the current implementation scope.
+continue with component-set/variant semantics, correction/override state,
+browser-level responsive/visual comparison, and handling for oversized assets
+that cannot fit the inline response budget. Image parity remains part of the
+overall product contract but is not the current implementation scope.
 
 ## Secondary Follow-Ups
 
@@ -122,7 +127,7 @@ contract but is not the current implementation scope.
 
 ```bash
 npm install
-npm run test       # 71 passing + 10 reconstruction-contract todos
+npm run test       # 73 passing + 10 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -130,6 +135,11 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **OpenAI Codex - 2026-06-30:** bounded durable Figma assets on
+  `codex/reconstruction-contract`; added secure CDN materialization, provenance,
+  response budgets, fallback review flags, Vercel duration configuration, and
+  confirmed that production currently lacks `FIGMA_ACCESS_TOKEN`.
 
 - **OpenAI Codex - 2026-06-30:** Figma fidelity continuation on
   `codex/reconstruction-contract`; added constraints/sizing/grid/effect mapping,
