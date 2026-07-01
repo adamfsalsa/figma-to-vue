@@ -46,6 +46,7 @@ export function buildPagePlan(input: PagePlanInput): PagePlan {
       analysis: input.analysis,
       name: input.referenceName,
       provided: Boolean(input.referenceName),
+      reconstruction: input.reconstruction ?? null,
     },
     page: {
       type: input.pageType,

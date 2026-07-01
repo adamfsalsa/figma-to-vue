@@ -1,4 +1,5 @@
 import type { LayoutPattern } from './referenceAnalysis';
+import type { ReconstructionPlan } from './reconstructionPlan';
 
 export interface GeneratedPageSection {
   title: string;
@@ -19,6 +20,7 @@ export interface GeneratedPage {
   palette: string[];
   referenceName: string;
   referencePreview: string | null;
+  reconstruction?: ReconstructionPlan | null;
   sections: GeneratedPageSection[];
   summary: string;
   title: string;

@@ -1,56 +1,63 @@
 # Roadmap & Feature List
 
-Forward-looking feature ideas, grouped and roughly prioritized. The pipeline
-(intake → analysis → JSON plan → Vue SFC / HTML / live preview) is complete and
-consistent; everything here builds on that. See `docs/STATUS.md` for what's
-already done and the smaller open follow-ups.
+The pipeline (intake -> analysis -> plan -> preview/export) exists, but the core
+reconstruction product is not complete. `docs/reconstruction-contract.md` is the
+authoritative scope and overrides older descriptions of the tool as a scaffolder.
 
-## Tier 1 — Finish what's started (highest value, low risk)
+## Core Completion - Source-Dependent Reconstruction
 
-1. **Open in new tab** — serve the standalone HTML export (`src/utils/htmlExport.ts`)
-   via a Blob URL so the live preview can open as a genuine `h1`-rooted page.
-2. **Download artifacts as files** — `.vue`, `.html`, `.json` downloads alongside
-   the existing copy-to-clipboard actions.
-3. **Turn on the AI tier** — operator config (keys + Upstash) and the first live
-   `claude-haiku-4-5` call, which is also the integration smoke test
-   (`docs/ai-analysis.md`).
-4. **Sample reference** — a one-click "try with an example image" so a first-time
-   visitor sees the whole flow without uploading anything.
+These are sequential capability slices, not optional roadmap tiers:
 
-## Tier 2 — Make the output richer / more faithful
+1. **Reconstruction-plan v2 (Figma foundation implemented)** - nested regions/components, geometry, layout,
+   typography, effects, assets, interactions, responsive constraints,
+   provenance, confidence, and overrides.
+2. **Figma evidence mapping (in progress)** - common nodes, geometry, auto-layout,
+   sizing, constraints, grids, effects, controls, component metadata, and
+   bounded durable image-node renders now map to v2. Continue with variables,
+   full component-set semantics, vectors, gradients, and oversized-asset delivery.
+3. **Image evidence mapping** - OCR, region/control detection, geometry, asset
+   extraction, and confidence into the same plan v2.
+4. **Correction workspace** - inspect and edit hierarchy, types, copy, styles,
+   assets, interactions, and low-confidence fields.
+5. **Recursive Vue renderer** - generate source-dependent semantic markup,
+   reusable child components, tokens, and CSS from plan v2.
+6. **Behavior renderer** - native-first local interactions plus explicit flags
+   for ambiguous or server-dependent behavior.
+7. **Responsive renderer** - source constraints plus conservative inferred
+   mobile/tablet/desktop behavior.
+8. **Parity and validation** - one render contract for live preview, Vue, and
+   HTML; compile, behavior, axe, viewport, and visual-comparison gates.
+9. **Representative fixture certification** - satisfy all RCN acceptance gates
+   across structurally distinct Figma and image-only fixtures.
 
-5. **Layout-faithful sections** — vary the per-section markup by `layoutPattern`
-   (e.g. the `finder-flow` variant emits real `<label><input type="radio">`
-   options like `src/components/RideFinder.vue`).
-6. **Child components** — emit multiple SFCs for repeated structures instead of
-   one monolithic component.
-7. **Content fidelity (OCR)** — extract the reference's actual copy so the
-   generated page reflects real text, moving the tool from "scaffolder" toward
-   "faithful reconstruction." (Largest scope; changes the product's promise.)
-8. **Editable plan** — let the user tweak the JSON plan and re-render, closing
-   the loop between the contract and the output.
+## Supporting Delivery Work
 
-## Tier 3 — Broaden the tool
+10. **Open in new tab** - serve the standalone HTML export via a Blob URL.
+11. **Download artifacts** - `.vue`, `.html`, `.json`, component, token, and
+    permitted asset downloads.
+12. **Runtime integration verification** - configure scoped keys/rate limits and
+    smoke-test live Figma and AI calls.
+13. **Sample references** - redistributable fixtures that demonstrate genuinely
+    different generated structures.
+14. **Editable raw plan** - advanced JSON editing alongside the visual correction
+    workspace.
 
-9. **Design token export** — emit the extracted palette as CSS variables, a JSON
-   token file, or a Tailwind config.
-10. **Additional framework targets** — React/Svelte exports alongside Vue, reusing
-    the same page plan.
-11. **Multi-frame intake** — accept several reference frames for a multi-section
-    or multi-step page.
+## Later Breadth and Polish
 
-## Tier 4 — Product polish
+15. Additional framework targets after Vue reconstruction passes all gates.
+16. Multi-frame and multi-page projects.
+17. Dark mode when present in source evidence.
+18. Deploy status and explicit user-approved publishing.
+19. Shareable reviewed plans without persisting secrets or private references.
 
-12. **Dark mode** — `prefers-color-scheme` support (tokens are already centralized
-    in `src/styles/tokens.css`, so this is mostly defining a dark override and
-    re-checking contrast/axe).
-13. **Deploy status panel** — surface the production URL / deploy state in-app
-    (keystone 8's original idea).
-14. **Shareable plan links** — encode the page plan in the URL so a configuration
-    can be shared without a backend (note the project rule: no `localStorage`).
+## Deliberate Non-Goals
 
-## Out of scope / deliberate non-goals
+- Guessing hidden backend, commerce, authentication, or destructive behavior.
+- Executing arbitrary model-generated scripts or automatically deploying them.
+- Claiming certainty where a screenshot does not provide enough evidence.
+- Republishing unlicensed Figma, Trek, Zoovu, or third-party assets.
+- Using the complete reference screenshot as the generated page.
 
-- Pixel-perfect cloning of arbitrary screenshots — the tool is a scaffolder.
-- Persisting user data (no `localStorage`/`sessionStorage` per project rules).
-- Republishing Trek/Zoovu assets — references stay local or royalty-free.
+Pixel identity is not promised for unknowable details, but recognizable,
+measurable structural and visual reconstruction is required. Uncertainty must be
+reviewable rather than converted into a generic template.
