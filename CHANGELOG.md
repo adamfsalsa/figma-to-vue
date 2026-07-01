@@ -5,6 +5,39 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Figma reconstruction v2 foundation - OpenAI Codex (2026-06-30)
+
+- Preserve nested Figma regions, geometry, auto-layout, spacing, typography,
+  fills, strokes, radii, semantic intent, provenance, and confidence in a
+  versioned reconstruction-plan v2.
+- Fetch image-bearing Figma nodes as independent assets and keep the selected
+  full-frame render out of generated-page content.
+- Render the source-dependent region tree through the live preview, Vue SFC,
+  and standalone HTML instead of reducing every Figma frame to four templates.
+- Activate and pass `RCN-01` structural divergence and `RCN-02` no-screenshot-
+  shortcut acceptance gates; add focused importer and renderer regression tests.
+- Preserve Figma fill/hug/fixed sizing, constraints, min/max dimensions,
+  wrapping, inferred grids, clipping, stroke widths, shadows, blur, text
+  transforms, component IDs, and variant-property metadata.
+- Translate clearly named Figma buttons, links, and input/search/email/password
+  fields into native accessible controls across preview, Vue, and HTML output.
+- Materialize allowed Figma CDN image-node renders into durable embedded assets
+  under strict per-asset and total response budgets; mark oversized/failed
+  fallbacks as remote and review-required.
+- Add a fixed-origin asset-fetch allowlist, redirect rejection, MIME validation,
+  byte limits, timeouts, and a 30-second Figma serverless-function ceiling.
+
+### Product contract and tests - OpenAI Codex (2026-06-30)
+
+- Establish source-dependent, usable-page reconstruction from both Figma and
+  reference images as the non-negotiable core completion criterion.
+- Document the normalized plan, correction UI, renderer, interaction,
+  responsive, safety, validation, and fixture work required to complete it.
+- Add twelve `RCN-*` release-blocking acceptance cases as an executable backlog;
+  they remain `todo` until the corresponding reconstruction behavior exists.
+- Remove handoff and roadmap language that incorrectly classified faithful
+  reconstruction as a later-tier enhancement or deliberate non-goal.
+
 ### Fixed — Claude (Anthropic) (2026-06-30)
 
 - "Enhance with AI" failed on the live deployment with a generic "unavailable"

@@ -2,6 +2,7 @@ import type { PagePlan } from '../types/pagePlan';
 import type { GeneratedPageCta } from '../types/generatedPage';
 import type { LayoutPattern } from '../types/referenceAnalysis';
 import { deriveCta } from './cta';
+import { generateReconstructionArtifact } from './reconstructionCodegen';
 
 type LayoutKey = 'single-hero' | 'hero-cards' | 'dashboard-grid' | 'finder-flow';
 
@@ -40,6 +41,10 @@ const LAYOUT_KEYS: Record<LayoutPattern, LayoutKey> = {
  * construction.
  */
 export function generateVueSfc(plan: PagePlan): string {
+  if (plan.reference.reconstruction) {
+    return generateReconstructedVueSfc(plan);
+  }
+
   const layoutKey = LAYOUT_KEYS[plan.reference.analysis.layoutPattern] ?? 'hero-cards';
   const variant = buildLayoutVariant(layoutKey);
   const cta = deriveCta(plan.reference.analysis.ctaStyle);
@@ -120,6 +125,24 @@ ${paletteStyles}  display: grid;
   line-height: 1.6;
 }
 ${cta.kind === 'none' && !isFinder ? '' : CTA_STYLES}${isFinder ? FINDER_STYLES : ''}${variant.styles}</style>
+`;
+}
+
+function generateReconstructedVueSfc(plan: PagePlan): string {
+  const reconstruction = plan.reference.reconstruction!;
+  const artifact = generateReconstructionArtifact(reconstruction);
+  return `<script setup lang="ts">
+// Generated from ${reconstruction.source.kind} evidence using reconstruction-plan v2.
+// Static source-dependent markup is intentionally editable after export.
+</script>
+
+<template>
+${artifact.markup}
+</template>
+
+<style scoped>
+${artifact.css}
+</style>
 `;
 }
 

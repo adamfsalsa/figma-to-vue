@@ -1,4 +1,5 @@
 import type { ReferenceAnalysis } from './referenceAnalysis.js';
+import type { ReconstructionPlan } from './reconstructionPlan.js';
 import type { VisualTokens } from './visualTokens.js';
 
 export type VisualDensity = 'Comfortable' | 'Compact' | 'Editorial';
@@ -22,6 +23,8 @@ export interface PagePlanInput {
   notes: string;
   pageType: string;
   referenceName: string | null;
+  /** Source-dependent spatial/component plan when structured evidence exists. */
+  reconstruction?: ReconstructionPlan;
   tone: string;
   /**
    * Real, locally-extracted palette/luminance from the uploaded reference
@@ -57,6 +60,7 @@ export interface PagePlan {
     analysis: ReferenceAnalysis;
     name: string | null;
     provided: boolean;
+    reconstruction: ReconstructionPlan | null;
   };
   schemaVersion: 'figma-to-vue.page-plan.v1';
   sections: PagePlanSection[];

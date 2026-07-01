@@ -1,16 +1,18 @@
 # Project Status & Handoff
 
-Single entry point for whoever picks this up next. Last updated after the AI
-tier was verified working end to end on the live deployment and an AI-failure
-troubleshooting reference was added (keystone 17).
+Single entry point for whoever picks this up next. Last updated after the core
+reconstruction scope was clarified (keystone 18).
 
 ## Current State
 
-The pipeline runs end to end. `main` is the source of truth; feature work
-through AI page generation and interactive dropdowns has been merged.
+The pipeline runs end to end, but the product is **not feature-complete**. `main`
+is the source of truth; Figma intake, AI page-copy generation, and interactive
+dropdown work have been merged. Figma imports now have a source-dependent v2
+renderer; image-only references still fall back to the broad v1 templates.
 
-- **Build / typecheck / tests all green:** `npm run build`, `npm run typecheck`,
-  `npm run test` (64 tests across 12 files) pass.
+- **Build / typecheck / implemented tests all green:** `npm run build`,
+  `npm run typecheck`, `npm run test` report 73 passing tests plus 10 explicit
+  reconstruction-contract todos across 14 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
@@ -37,6 +39,18 @@ through AI page generation and interactive dropdowns has been merged.
 9. **One-click live preview** overlay with an interactive CTA — and an
    interactive **dropdown** for Product-finder-flow pages — for non-coders
    (`src/components/GeneratedPagePreview.vue`, `docs/live-preview.md`).
+10. **Figma reconstruction-plan v2 vertical slice** — nested Figma hierarchy,
+    bounds, auto-layout, spacing, typography, fills, radii, semantic tags, and
+    independent image-node assets now drive one recursive preview/Vue/HTML
+    renderer. The full-frame render remains comparison evidence. `RCN-01` and
+    `RCN-02` are active and passing.
+11. **Richer Figma fidelity** — constraints, fill/hug/fixed sizing, min/max
+    dimensions, wrapping, inferred grids, clipping, strokes, shadows, blur,
+    text transforms, component/variant metadata, and native controls now flow
+    through the shared renderer.
+12. **Bounded durable Figma assets** — eligible Figma-owned image-node renders
+    are embedded as data URLs under per-asset/total response caps. Remote,
+    oversized, or failed assets remain visible but are marked review-required.
 
 ## To Enable the AI Tier (operator, optional)
 
@@ -52,26 +66,38 @@ See `.env.example` and `docs/deployment.md`.
 
 Figma URL intake separately requires a server-side `FIGMA_ACCESS_TOKEN` with
 `file_content:read`. The token is never returned to or stored by the browser.
+**Vercel audit on 2026-06-30:** this variable is not currently configured, so a
+real deployed Figma import cannot be smoke-tested yet.
 
-## What's Next
+## Required Next: Complete Reconstruction
 
-A prioritized, forward-looking feature list lives in **`docs/roadmap.md`**. The
-smaller, already-scoped follow-ups are below.
+The non-negotiable next phase is keystone 18: both Figma and image references
+must produce usable, responsive pages whose DOM, CSS, media, and interactions
+materially match their sources. This is the core product, not a later fidelity
+upgrade. Read **`docs/reconstruction-contract.md` before changing the plan,
+renderer, preview, AI prompt, or roadmap**.
 
-## Open Follow-Ups (nothing is blocking)
+Implementation must introduce a normalized spatial/component reconstruction
+plan, reviewable confidence and corrections, a source-dependent renderer,
+responsive and interaction reconstruction, and structural/visual/accessibility
+validation. `tests/reconstructionAcceptance.test.ts` records the release gates.
 
-Consolidated from the per-doc "Next Step" sections:
+The first two Figma slices are implemented. For the active Figma-only work,
+continue with component-set/variant semantics, correction/override state,
+browser-level responsive/visual comparison, and handling for oversized assets
+that cannot fit the inline response budget. Image parity remains part of the
+overall product contract but is not the current implementation scope.
+
+## Secondary Follow-Ups
 
 - **AI tier is verified live** (no longer an open item). A real reference image
   on the deployed site returns HTTP 200 with full analysis + generated copy in
   ~8s. If "Enhance with AI" ever misbehaves, `docs/troubleshooting-ai.md` has the
   diagnosis method and a "Key flags for API errors" table.
-- **AI changes content, not visual design (by design).** The model generates the
-  page copy and classifies the layout; colors come from local pixel extraction
-  and the layout/typography is a fixed deterministic template. So an AI-enhanced
-  preview reads differently but looks structurally the same as the templated
-  one. A visually-bespoke "the AI redesigns the page" mode is a larger,
-  intentionally-unbuilt "Level 3" (the model writing actual layout/CSS).
+- **Image-only rendering still changes content more than visual structure.**
+  This is a known blocking gap, not a deliberate final design. The new Figma v2
+  route proves validated plan-driven reconstruction without letting a model
+  write or execute arbitrary CSS/code; image analysis must now reach parity.
 - **Standalone preview:** the styled HTML export (`src/utils/htmlExport.ts`) is
   now a real `h1`-rooted page with the CTA, but the live preview overlay still
   renders the in-app `h3`/`h4` component. Add an "open in new tab" action that
@@ -83,9 +109,6 @@ Consolidated from the per-doc "Next Step" sections:
 - **Structured outputs:** the AI call uses prompt-plus-validate; switch to
   `output_config.format` once the SDK types it on GA messages.
   (`docs/ai-analysis.md`)
-- **Content fidelity:** the optional AI path generates or adapts copy from the
-  image; the no-AI fallback remains templated. Exact OCR and pixel-level layout
-  reproduction remain out of scope.
 - **Deploy status panel:** keystone 8's original idea (surface the production
   URL / deploy state in-app) is still unbuilt.
 
@@ -104,7 +127,7 @@ Consolidated from the per-doc "Next Step" sections:
 
 ```bash
 npm install
-npm run test       # 64 tests
+npm run test       # 73 passing + 10 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -112,6 +135,26 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **OpenAI Codex - 2026-06-30:** bounded durable Figma assets on
+  `codex/reconstruction-contract`; added secure CDN materialization, provenance,
+  response budgets, fallback review flags, Vercel duration configuration, and
+  confirmed that production currently lacks `FIGMA_ACCESS_TOKEN`.
+
+- **OpenAI Codex - 2026-06-30:** Figma fidelity continuation on
+  `codex/reconstruction-contract`; added constraints/sizing/grid/effect mapping,
+  component metadata, and native control reconstruction. No image-analysis
+  scope was included.
+
+- **OpenAI Codex - 2026-06-30:** Figma reconstruction v2 foundation on
+  `codex/reconstruction-contract`; added nested evidence mapping, independent
+  image-node renders, recursive preview/Vue/HTML output, and activated the first
+  two reconstruction release gates.
+
+- **OpenAI Codex - 2026-06-30:** reconstruction scope contract on
+  `codex/reconstruction-contract`; made source-dependent usable-page output the
+  core completion criterion, documented the implementation breakdown and safety
+  boundary, and added twelve executable release-blocking acceptance cases.
 
 - **Claude (Anthropic) — 2026-06-30:** verified the AI tier end to end on the
   live deployment and fixed the reliability bug that blocked it — the client
