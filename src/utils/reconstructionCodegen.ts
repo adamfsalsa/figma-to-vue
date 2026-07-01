@@ -17,7 +17,7 @@ export interface ReconstructionArtifact {
 export function generateReconstructionArtifact(plan: ReconstructionPlan): ReconstructionArtifact {
   const cssRules: string[] = [];
   const markup = plan.regions
-    .map((region) => renderRegion(region, plan.viewport.width ?? undefined, cssRules))
+    .map((region) => renderRegion(region, plan.viewport.width ?? undefined, undefined, cssRules))
     .join('\n');
 
   return {
@@ -29,12 +29,13 @@ export function generateReconstructionArtifact(plan: ReconstructionPlan): Recons
 function renderRegion(
   region: ReconstructionRegion,
   parentWidth: number | undefined,
+  parentLayoutMode: ReconstructionLayoutMode,
   cssRules: string[],
 ): string {
   const className = safeClass(region.id);
   const layoutClass = region.layout ? ` rr--${region.layout.mode}` : '';
   const classes = `rr rr--${region.element}${layoutClass} ${className}`;
-  cssRules.push(buildRule(region, parentWidth, className));
+  cssRules.push(buildRule(region, parentWidth, parentLayoutMode, className));
 
   if (region.element === 'media') {
     if (region.asset?.url) {
@@ -63,7 +64,7 @@ function renderRegion(
   const fallbackLabel = region.children.length === 0 ? region.control?.label : undefined;
   const text = region.text ? escapeHtml(region.text) : fallbackLabel ? escapeHtml(fallbackLabel) : '';
   const children = region.children
-    .map((child) => renderRegion(child, region.bounds?.width, cssRules))
+    .map((child) => renderRegion(child, region.bounds?.width, region.layout?.mode, cssRules))
     .join('\n');
   return `<${tag}${attributes} class="${classes}" data-reconstruction-region="${escapeHtml(region.id)}">${text}${children}</${tag}>`;
 }
@@ -71,6 +72,7 @@ function renderRegion(
 function buildRule(
   region: ReconstructionRegion,
   parentWidth: number | undefined,
+  parentLayoutMode: ReconstructionLayoutMode,
   className: string,
 ): string {
   const declarations: string[] = [];
@@ -100,8 +102,16 @@ function buildRule(
     if (layout.sizeLimits?.maxHeight !== undefined) declarations.push(`max-height: ${px(layout.sizeLimits.maxHeight)}`);
   }
   if (bounds?.width && parentWidth && parentWidth > 0) {
-    declarations.push(`flex-basis: ${percent((bounds.width / parentWidth) * 100)}`);
+    const width = percent((bounds.width / parentWidth) * 100);
+    if (parentLayoutMode === 'row') declarations.push(`flex-basis: ${width}`);
+    if (parentLayoutMode === 'column') declarations.push(`width: ${width}`);
   }
+  if (region.element === 'page' && bounds?.width) {
+    declarations.push(`max-width: ${px(bounds.width)}`);
+    declarations.push('margin: 0 auto');
+  }
+  if (parentLayoutMode === 'column' && layout?.constraints?.horizontal === 'center') declarations.push('align-self: center');
+  if (parentLayoutMode === 'column' && layout?.constraints?.horizontal === 'end') declarations.push('align-self: flex-end');
   if (bounds?.width && bounds.height && region.element === 'media') {
     declarations.push(`aspect-ratio: ${number(bounds.width)} / ${number(bounds.height)}`);
   }
@@ -189,4 +199,7 @@ const BASE_CSS = `.rr { box-sizing: border-box; min-width: 0; }
 const RESPONSIVE_CSS = `@media (max-width: 48rem) {
   .rr--row { flex-wrap: wrap; }
   .rr--row > .rr { flex: 1 1 min(100%, 18rem); }
+  .rr--column > .rr { width: 100% !important; }
 }`;
+
+type ReconstructionLayoutMode = NonNullable<ReconstructionRegion['layout']>['mode'] | undefined;

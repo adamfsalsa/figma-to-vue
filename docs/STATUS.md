@@ -136,6 +136,11 @@ npm run dev        # local preview at http://localhost:5173
 
 ## Agent Ownership Log
 
+- **OpenAI Codex - 2026-07-01:** Figma output polish on
+  `codex/reconstruction-contract`; corrected axis-aware child sizing, retained
+  image-backed container hierarchies, inferred free-layout spacing, constrained
+  pages to responsive source widths, and normalized broad Site canvas imports.
+
 - **OpenAI Codex - 2026-06-30:** bounded durable Figma assets on
   `codex/reconstruction-contract`; added secure CDN materialization, provenance,
   response budgets, fallback review flags, Vercel duration configuration, and

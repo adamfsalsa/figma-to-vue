@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-01 — Figma reconstruction polish
+
+- Corrected parent-axis sizing so column children no longer use width ratios as
+  heights through `flex-basis`.
+- Preserved child content inside image-filled Figma frames, inferred bounded
+  spacing for free-layout rows/columns, and centered output at its source width.
+- Added broad Site canvas normalization to select the largest visible page
+  frame or section, with preview/Vue/HTML parity and regression coverage.
+
 ## 2026-07-01 — Figma-only intake surface
 
 - Temporarily hid reference-image upload behind a labeled, reversible UI scope flag.

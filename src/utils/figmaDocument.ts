@@ -185,6 +185,26 @@ export function collectFigmaAssetNodeIds(root: FigmaNode, limit = 12): string[] 
     .map((node) => node.id);
 }
 
+/**
+ * Shared Site/file links can target a document canvas instead of a page frame.
+ * A canvas has no useful webpage viewport, so select its largest visible
+ * renderable child while preserving explicit frame/section selections.
+ */
+export function selectFigmaRenderableRoot(root: FigmaNode): FigmaNode {
+  if (!['DOCUMENT', 'CANVAS'].includes(root.type)) return root;
+  const candidates = (root.children ?? []).filter((node) =>
+    node.visible !== false
+    && ['FRAME', 'SECTION', 'COMPONENT', 'COMPONENT_SET'].includes(node.type),
+  );
+  return candidates.sort((a, b) => nodeArea(b) - nodeArea(a))[0] ?? root;
+}
+
+function nodeArea(node: FigmaNode): number {
+  const width = finite(node.absoluteBoundingBox?.width);
+  const height = finite(node.absoluteBoundingBox?.height);
+  return Math.max(0, width) * Math.max(0, height);
+}
+
 function buildReconstructionPlan(
   fileName: string,
   root: FigmaNode,
@@ -275,7 +295,10 @@ function inferElement(
 ): ReconstructionRegion['element'] {
   if (isRoot) return 'page';
   if (node.type === 'TEXT') return 'text';
-  if (hasImageFill(node)) return 'media';
+  // A frame may use an image fill as a background while still containing the
+  // page's real content. Treat only leaf image layers as media; otherwise the
+  // renderer would replace the entire subtree with one flattened image.
+  if (hasImageFill(node) && !hasChildren) return 'media';
   const name = node.name.toLowerCase();
   if (/\b(input|field|search|email|password)\b/.test(name)) return 'input';
   if (/\b(link|text link)\b/.test(name)) return 'link';
@@ -330,6 +353,9 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
     : node.layoutMode === 'VERTICAL'
       ? 'column'
       : inferFreeLayout(children);
+  const inferredGap = !Number.isFinite(node.itemSpacing)
+    ? inferSpatialGap(children, mode)
+    : undefined;
   return {
     mode,
     ...(node.layoutWrap === 'WRAP' ? { wrap: true } : {}),
@@ -360,7 +386,11 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
           },
         }
       : {}),
-    ...(Number.isFinite(node.itemSpacing) ? { gap: Math.max(0, node.itemSpacing ?? 0) } : {}),
+    ...(Number.isFinite(node.itemSpacing)
+      ? { gap: Math.max(0, node.itemSpacing ?? 0) }
+      : inferredGap !== undefined
+        ? { gap: inferredGap }
+        : {}),
     ...(hasPadding(node)
       ? {
           padding: {
@@ -374,6 +404,32 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
     ...(mapAlign(node.counterAxisAlignItems) ? { align: mapAlign(node.counterAxisAlignItems) } : {}),
     ...(mapJustify(node.primaryAxisAlignItems) ? { justify: mapJustify(node.primaryAxisAlignItems) } : {}),
   };
+}
+
+function inferSpatialGap(
+  children: ReconstructionRegion[],
+  mode: ReconstructionLayout['mode'],
+): number | undefined {
+  if ((mode !== 'row' && mode !== 'column') || children.length < 2) return undefined;
+  if (children.some((child) => !child.bounds)) return undefined;
+  const horizontal = mode === 'row';
+  const ordered = [...children].sort((a, b) =>
+    horizontal
+      ? (a.bounds!.x ?? 0) - (b.bounds!.x ?? 0)
+      : (a.bounds!.y ?? 0) - (b.bounds!.y ?? 0),
+  );
+  const gaps = ordered.slice(1).map((child, index) => {
+    const previous = ordered[index].bounds!;
+    const current = child.bounds!;
+    const previousEnd = horizontal
+      ? (previous.x ?? 0) + previous.width
+      : (previous.y ?? 0) + previous.height;
+    const currentStart = horizontal ? (current.x ?? 0) : (current.y ?? 0);
+    return currentStart - previousEnd;
+  }).filter((gap) => Number.isFinite(gap) && gap >= 0 && gap <= 512);
+  if (gaps.length === 0) return undefined;
+  gaps.sort((a, b) => a - b);
+  return Math.round(gaps[Math.floor(gaps.length / 2)] * 100) / 100;
 }
 
 function inferFreeLayout(children: ReconstructionRegion[]): ReconstructionLayout['mode'] {

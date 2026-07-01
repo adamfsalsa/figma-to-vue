@@ -2,6 +2,7 @@ import {
   buildFigmaDocumentImport,
   collectFigmaAssetNodeIds,
   parseFigmaUrl,
+  selectFigmaRenderableRoot,
   type FigmaNode,
 } from '../src/utils/figmaDocument';
 
@@ -133,6 +134,21 @@ describe('Figma document intake', () => {
     expect(collectFigmaAssetNodeIds(root)).toEqual(['12:40']);
   });
 
+  it('selects the largest renderable frame from a broad Site canvas link', () => {
+    const canvas: FigmaNode = {
+      id: '0:3',
+      name: 'Site canvas',
+      type: 'CANVAS',
+      children: [
+        { id: '1:1', name: 'Small draft', type: 'FRAME', absoluteBoundingBox: { x: 0, y: 0, width: 320, height: 480 } },
+        { id: '1:2', name: 'Published page', type: 'SECTION', absoluteBoundingBox: { x: 400, y: 0, width: 1440, height: 2400 } },
+      ],
+    };
+
+    expect(selectFigmaRenderableRoot(canvas).id).toBe('1:2');
+    expect(selectFigmaRenderableRoot(canvas.children![0]).id).toBe('1:1');
+  });
+
   it('preserves grid, constraints, effects, component metadata, and native control intent', () => {
     const root: FigmaNode = {
       id: '20:1',
@@ -215,6 +231,53 @@ describe('Figma document intake', () => {
       element: 'button',
       tag: 'button',
       control: { type: 'button', label: 'Save changes' },
+    });
+  });
+
+  it('preserves children inside image-filled frames and infers spacing from free-layout geometry', () => {
+    const root: FigmaNode = {
+      id: '30:1',
+      name: 'Site page',
+      type: 'FRAME',
+      absoluteBoundingBox: { x: 0, y: 0, width: 680, height: 400 },
+      children: [
+        {
+          id: '30:2',
+          name: 'Image-backed hero card',
+          type: 'FRAME',
+          absoluteBoundingBox: { x: 0, y: 0, width: 300, height: 400 },
+          fills: [{ type: 'IMAGE' }],
+          children: [{
+            id: '30:3',
+            name: 'Hero title',
+            type: 'TEXT',
+            characters: 'Structure must survive',
+            absoluteBoundingBox: { x: 24, y: 24, width: 252, height: 60 },
+          }],
+        },
+        {
+          id: '30:4',
+          name: 'Content card',
+          type: 'FRAME',
+          absoluteBoundingBox: { x: 340, y: 0, width: 300, height: 400 },
+          children: [{
+            id: '30:5',
+            name: 'Card title',
+            type: 'TEXT',
+            characters: 'Second column',
+            absoluteBoundingBox: { x: 364, y: 24, width: 252, height: 60 },
+          }],
+        },
+      ],
+    };
+
+    const page = buildFigmaDocumentImport('Site fixture', root, null).reconstruction.regions[0];
+
+    expect(page.layout).toMatchObject({ mode: 'row', gap: 40 });
+    expect(page.children[0].element).not.toBe('media');
+    expect(page.children[0].children[0]).toMatchObject({
+      element: 'text',
+      text: 'Structure must survive',
     });
   });
 });

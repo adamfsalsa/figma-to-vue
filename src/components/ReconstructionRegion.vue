@@ -35,6 +35,7 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-layout-mode="region.layout?.mode"
     />
   </button>
 
@@ -55,6 +56,7 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-layout-mode="region.layout?.mode"
     />
   </a>
 
@@ -86,6 +88,7 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-layout-mode="region.layout?.mode"
     />
   </component>
 </template>
@@ -93,10 +96,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { CSSProperties } from 'vue';
-import type { ReconstructionRegion } from '../types/reconstructionPlan';
+import type { ReconstructionLayout, ReconstructionRegion } from '../types/reconstructionPlan';
 
 const props = defineProps<{
   parentWidth?: number;
+  parentLayoutMode?: ReconstructionLayout['mode'];
   region: ReconstructionRegion;
 }>();
 
@@ -130,8 +134,16 @@ const regionStyle = computed<CSSProperties>(() => {
   }
 
   if (bounds?.width && props.parentWidth && props.parentWidth > 0) {
-    result.flexBasis = `${Math.min(100, Math.max(1, (bounds.width / props.parentWidth) * 100))}%`;
+    const width = `${Math.min(100, Math.max(1, (bounds.width / props.parentWidth) * 100))}%`;
+    if (props.parentLayoutMode === 'row') result.flexBasis = width;
+    if (props.parentLayoutMode === 'column') result.width = width;
   }
+  if (props.region.element === 'page' && bounds?.width) {
+    result.maxWidth = `${bounds.width}px`;
+    result.margin = '0 auto';
+  }
+  if (props.parentLayoutMode === 'column' && layout?.constraints?.horizontal === 'center') result.alignSelf = 'center';
+  if (props.parentLayoutMode === 'column' && layout?.constraints?.horizontal === 'end') result.alignSelf = 'flex-end';
   if (bounds?.width && bounds?.height && props.region.element === 'media') {
     result.aspectRatio = `${bounds.width} / ${bounds.height}`;
   }
@@ -226,6 +238,10 @@ const renderTag = computed(() =>
 
   .reconstruction-region--row > .reconstruction-region {
     flex: 1 1 min(100%, 18rem);
+  }
+
+  .reconstruction-region--column > .reconstruction-region {
+    width: 100% !important;
   }
 }
 </style>

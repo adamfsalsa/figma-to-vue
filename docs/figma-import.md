@@ -25,6 +25,9 @@ header to `https://api.figma.com`.
 
 A URL with `node-id` imports that selected node. A file URL without a node id
 imports the first top-level frame, component, component set, or section.
+When a Figma Sites link resolves to a broad document/canvas node, the importer
+uses its largest visible frame or section as the page root instead of rendering
+the entire editor canvas.
 
 ## Extracted Data
 
@@ -53,6 +56,10 @@ imports the first top-level frame, component, component set, or section.
 The reconstruction plan now drives the live preview, Vue SFC, and HTML export.
 Different Figma row/column compositions therefore produce different markup and
 CSS instead of only changing words inside one universal hero template.
+Free-layout rows and columns infer bounded spacing from source geometry, child
+width ratios are applied according to the parent axis, and source page width is
+preserved as a centered responsive maximum. Image-filled containers retain
+their child hierarchy rather than being flattened into leaf images.
 
 The imported classification remains editable in the human-guided analyzer.
 This matters because layer names and document organization vary widely; the

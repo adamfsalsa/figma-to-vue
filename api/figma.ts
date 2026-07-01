@@ -2,6 +2,7 @@ import {
   buildFigmaDocumentImport,
   collectFigmaAssetNodeIds,
   parseFigmaUrl,
+  selectFigmaRenderableRoot,
   type FigmaNode,
 } from '../src/utils/figmaDocument.js';
 import type { FigmaDocumentImport } from '../src/types/figmaImport.js';
@@ -71,9 +72,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   try {
-    const { fileName, node, thumbnailUrl } = parsed.nodeId
+    const { fileName, node: selectedNode, thumbnailUrl } = parsed.nodeId
       ? await fetchNode(parsed.fileKey, parsed.nodeId, token)
       : await fetchFirstFrame(parsed.fileKey, token);
+    const node = selectFigmaRenderableRoot(selectedNode);
     const assetNodeIds = collectFigmaAssetNodeIds(node);
     const renderedImages: Record<string, string | null> = await fetchRenderedImages(
       parsed.fileKey,

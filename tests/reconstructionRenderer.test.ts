@@ -78,8 +78,12 @@ describe('source-dependent reconstruction rendering', () => {
     expect(rowSfc).not.toBe(columnSfc);
     expect(rowSfc).toContain('rr--row');
     expect(rowSfc).toContain('flex-direction: row');
+    expect(rowSfc).toContain('flex-basis: 50%');
+    expect(rowSfc).toContain('max-width: 1200px');
     expect(columnSfc).toContain('rr--column');
     expect(columnSfc).toContain('flex-direction: column');
+    expect(columnSfc).toContain('width: 50%');
+    expect(columnSfc).not.toContain('flex-basis: 50%');
   });
 
   it('renders Figma controls, grid constraints, and effects as usable native output', async () => {
