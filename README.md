@@ -39,6 +39,11 @@ For current state, what's done, how to enable the optional AI tier, and the open
 follow-ups, see **[docs/STATUS.md](docs/STATUS.md)** — the single entry point for
 picking this up.
 
+For a compact parallel-agent start, use
+**[docs/SECOND-OP-HANDOFF.md](docs/SECOND-OP-HANDOFF.md)**. It contains the exact
+branch/commit, current Figma-only UI scope, ownership boundaries, and a
+token-friendly bootstrap prompt.
+
 Figma REST setup and security boundaries are documented in
 **[docs/figma-import.md](docs/figma-import.md)**.
 

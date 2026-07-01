@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-07-01 — Second-operator handoff
+
+- Added a compact operational handoff with exact branch/commit state, product
+  truth, implementation map, current gaps, ownership boundaries, verification,
+  and a token-friendly bootstrap prompt.
+- Corrected stale test-count, branch-source, Figma-only UI, and live deployment
+  status so a new operator does not begin from false assumptions.
+
 ## 2026-07-01 — Figma reconstruction polish
 
 - Corrected parent-axis sizing so column children no longer use width ratios as

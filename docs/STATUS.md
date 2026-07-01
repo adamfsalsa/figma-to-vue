@@ -5,13 +5,15 @@ reconstruction scope was clarified (keystone 18).
 
 ## Current State
 
-The pipeline runs end to end, but the product is **not feature-complete**. `main`
-is the source of truth; Figma intake, AI page-copy generation, and interactive
-dropdown work have been merged. Figma imports now have a source-dependent v2
-renderer; image-only references still fall back to the broad v1 templates.
+The pipeline runs end to end, but the product is **not feature-complete**.
+`main` is the merged baseline; active Figma reconstruction work is on
+`codex/reconstruction-contract`, with verified implementation baseline
+`a1a0d5d`, pending merge. Figma imports now
+have a source-dependent v2 renderer; image-only references remain in code but
+are temporarily hidden from the public UI and still use broad v1 templates.
 
 - **Build / typecheck / implemented tests all green:** `npm run build`,
-  `npm run typecheck`, `npm run test` report 73 passing tests plus 10 explicit
+  `npm run typecheck`, `npm run test` report 75 passing tests plus 10 explicit
   reconstruction-contract todos across 14 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
@@ -66,8 +68,9 @@ See `.env.example` and `docs/deployment.md`.
 
 Figma URL intake separately requires a server-side `FIGMA_ACCESS_TOKEN` with
 `file_content:read`. The token is never returned to or stored by the browser.
-**Vercel audit on 2026-06-30:** this variable is not currently configured, so a
-real deployed Figma import cannot be smoke-tested yet.
+**Live confirmation on 2026-07-01:** the preview deployment accepted a Figma
+Sites URL and returned generated output, confirming that the token-backed route
+is configured. Never print, commit, or move the token into a `VITE_` variable.
 
 ## Required Next: Complete Reconstruction
 
@@ -127,7 +130,7 @@ overall product contract but is not the current implementation scope.
 
 ```bash
 npm install
-npm run test       # 73 passing + 10 reconstruction-contract todos
+npm run test       # 75 passing + 10 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -135,6 +138,11 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **OpenAI Codex - 2026-07-01:** prepared
+  `docs/SECOND-OP-HANDOFF.md` as the compact parallel-agent source of truth,
+  corrected stale branch/test/deployment status, and defined a low-collision
+  visual-validation/review lane for the incoming second operator.
 
 - **OpenAI Codex - 2026-07-01:** Figma output polish on
   `codex/reconstruction-contract`; corrected axis-aware child sizing, retained
