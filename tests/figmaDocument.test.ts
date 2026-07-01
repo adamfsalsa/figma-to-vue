@@ -126,7 +126,7 @@ describe('Figma document intake', () => {
     expect(collectFigmaAssetNodeIds(root)).toEqual(['12:40']);
   });
 
-  it('preserves grid, constraints, effects, component metadata, and native control intent', () => {
+  it('preserves free positioning, constraints, effects, component metadata, and native control intent', () => {
     const root: FigmaNode = {
       id: '20:1',
       name: 'Account settings grid',
@@ -174,7 +174,7 @@ describe('Figma document intake', () => {
     const imported = buildFigmaDocumentImport('Settings', root, null);
     const page = imported.reconstruction.regions[0];
 
-    expect(page.layout).toMatchObject({ mode: 'grid', columns: 2 });
+    expect(page.layout).toMatchObject({ mode: 'free' });
     expect(page.style).toMatchObject({
       borderColor: '#ccd1db',
       borderWidth: 2,

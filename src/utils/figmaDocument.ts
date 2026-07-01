@@ -329,7 +329,9 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
     ? 'row'
     : node.layoutMode === 'VERTICAL'
       ? 'column'
-      : inferFreeLayout(children);
+      : canUseFreeLayout(node, children)
+        ? 'free'
+        : inferFreeLayout(children);
   return {
     mode,
     ...(node.layoutWrap === 'WRAP' ? { wrap: true } : {}),
@@ -374,6 +376,26 @@ function toLayout(node: FigmaNode, children: ReconstructionRegion[]): Reconstruc
     ...(mapAlign(node.counterAxisAlignItems) ? { align: mapAlign(node.counterAxisAlignItems) } : {}),
     ...(mapJustify(node.primaryAxisAlignItems) ? { justify: mapJustify(node.primaryAxisAlignItems) } : {}),
   };
+}
+
+/**
+ * Free (non-auto-layout) frames reconstruct with absolute positioning so the
+ * source's pixel placement survives, instead of collapsing into a guessed
+ * flow. Requires positioned bounds on the frame and every child; otherwise
+ * the flow guess remains the fallback.
+ */
+function canUseFreeLayout(node: FigmaNode, children: ReconstructionRegion[]): boolean {
+  const bounds = node.absoluteBoundingBox;
+  return children.length > 0
+    && bounds !== undefined
+    && Number.isFinite(bounds.x)
+    && Number.isFinite(bounds.y)
+    && (bounds.width ?? 0) > 0
+    && (bounds.height ?? 0) > 0
+    && children.every((child) =>
+      child.bounds !== undefined
+      && Number.isFinite(child.bounds.x)
+      && Number.isFinite(child.bounds.y));
 }
 
 function inferFreeLayout(children: ReconstructionRegion[]): ReconstructionLayout['mode'] {

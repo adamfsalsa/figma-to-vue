@@ -10,9 +10,10 @@ import, plus a clear answer to "does this run through AI?"
 - The preview is built by a **deterministic reconstruction mapper**
   (`api/figma.ts` → `buildReconstructionPlan` in `src/utils/figmaDocument.ts`).
   **No AI is involved** in the import or the preview.
-- Preview fidelity depends almost entirely on **how the Figma frame is
-  authored**. Frames built with **Auto Layout** reconstruct well; frames with
-  **free (absolute) positioning** currently collapse into a stacked flow.
+- Preview fidelity depends heavily on **how the Figma frame is authored**.
+  Frames built with **Auto Layout** reconstruct as responsive flexbox; frames
+  with **free (absolute) positioning** now reconstruct at their source pixel
+  positions via a percentage-based absolute-position fallback (see §6).
 - AI (`api/analyze.ts`) is a **separate, optional** step that only enriches
   **copy and semantic classification** — it does **not** affect preview layout.
 
@@ -103,11 +104,11 @@ your frame is to a real responsive layout, the better it reconstructs.
 
 **Avoid:**
 
-- **Free/absolute positioning** (dragging elements to fixed coordinates with no
-  Auto Layout). The mapper falls back to `inferFreeLayout`, which *guesses*
-  row/column/grid from rough coordinate spread and then **discards the actual
-  positions** — so overlapping/layered/precisely-placed elements collapse into a
-  stack. **This is the #1 cause of "the preview is all broken."**
+- **Relying on true reflow for free/absolute-positioned frames.** Non–Auto-Layout
+  frames reconstruct faithfully (see §6), but as a proportionally scaling
+  composition — they shrink as a unit at narrow widths instead of reflowing
+  into a mobile layout. Only Auto Layout gives the mapper real responsive
+  intent.
 - **Deeply nested decorative wrappers** — they add noise to the region tree.
 - **Relying on Figma Variables** — they are not fetched (plan/scope limits).
 - **Relying on prototype interactions** — not translated.
@@ -116,8 +117,8 @@ your frame is to a real responsive layout, the better it reconstructs.
 
 ## 5. Known limitations (won't be perfect even when authored well)
 
-- **Free-form frames don't preserve position** (see §4). Fix in progress — see
-  §6.
+- **Free-form frames scale proportionally instead of reflowing** (see §4/§6).
+  Position is preserved; responsive re-layout is not.
 - **Asset embedding is capped**: 600 KB per asset, 2.25 MB total; only
   Figma-owned PNG/JPEG/WebP/GIF. Assets over budget stay remote or fall back to
   placeholders.
@@ -129,21 +130,29 @@ your frame is to a real responsive layout, the better it reconstructs.
 
 ---
 
-## 6. Recommended code fix: absolute-position fallback
+## 6. Absolute-position fallback (implemented)
 
-To make free-form (non–Auto-Layout) frames preview faithfully, add an
-absolute-position fallback to the reconstructor:
+Free-form (non–Auto-Layout) frames now preview faithfully:
 
-- When a frame has **no `layoutMode`**, render its children with
-  `position: absolute` using each child's `bounds` (x / y / width / height)
-  relative to the frame, instead of the `inferFreeLayout` flow guess.
-- Emit a flag from `toLayout` / `mapFigmaRegion` (e.g. `positioning: 'absolute'`)
-  and honor it in `ReconstructionRegion.vue`'s `regionStyle`.
+- When a frame has **no `layoutMode`** and it plus all mapped children carry
+  positioned bounds, `toLayout` (`src/utils/figmaDocument.ts`) emits
+  `layout.mode: 'free'` instead of the old `inferFreeLayout` flow guess (which
+  remains only as a fallback when bounds are missing).
+- Both renderers — `ReconstructionRegion.vue` (live preview) and
+  `reconstructionCodegen.ts` (Vue SFC + HTML export) — honor `free`: the frame
+  becomes `position: relative` with its source `aspect-ratio`, and each child
+  is `position: absolute` with `left/top/width/height` as **percentages of the
+  frame**, so the composition scales with the preview width. Overlaps and
+  z-order follow the Figma child order.
+- Free frames are also `container-type: inline-size` query containers, and
+  text inside them uses `cqw` font/line-height so typography scales with the
+  frame instead of overflowing its box at narrow widths. Text keeps auto
+  height so wrapped copy is never clipped.
 
-This reproduces *any* free-form Figma frame at pixel positions — which is the
-whole point of a Figma→Vue tool — while Auto Layout frames keep using the
-responsive flow path. Contained change to `ReconstructionRegion.vue` +
-`figmaDocument.ts` (+ tests).
+This reproduces any free-form Figma frame at its source positions, while Auto
+Layout frames keep the responsive flow path. Covered by
+`tests/reconstructionRenderer.test.ts` ("reconstructs free (non-auto-layout)
+frames at their source positions") and `tests/figmaDocument.test.ts`.
 
 ---
 
@@ -152,8 +161,10 @@ responsive flow path. Contained change to `ReconstructionRegion.vue` +
 1. **Is it on Vercel with the token set?** If not, it never imported.
 2. **Is the URL a `/design`, `/file`, `/proto`, or `/site` link with a
    `node-id`?** If it's `/board` or `/slides`, it's unsupported.
-3. **Does the frame use Auto Layout?** If not, expect a collapsed stack until
-   the §6 fix lands. Quick workaround: apply Auto Layout in Figma and re-import.
+3. **Does the frame use Auto Layout?** If not, it renders via the
+   absolute-position fallback (§6): faithful placement, but it scales as one
+   unit instead of reflowing at mobile widths. Apply Auto Layout in Figma and
+   re-import if you want responsive reflow.
 4. **Are images missing?** Check the asset size caps (§5).
 5. **Expecting AI to fix layout?** It won't — AI only affects copy/classification
    (§1).

@@ -11,7 +11,7 @@ dropdown work have been merged. Figma imports now have a source-dependent v2
 renderer; image-only references still fall back to the broad v1 templates.
 
 - **Build / typecheck / implemented tests all green:** `npm run build`,
-  `npm run typecheck`, `npm run test` report 73 passing tests plus 10 explicit
+  `npm run typecheck`, `npm run test` report 74 passing tests plus 10 explicit
   reconstruction-contract todos across 14 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
@@ -51,6 +51,10 @@ renderer; image-only references still fall back to the broad v1 templates.
 12. **Bounded durable Figma assets** — eligible Figma-owned image-node renders
     are embedded as data URLs under per-asset/total response caps. Remote,
     oversized, or failed assets remain visible but are marked review-required.
+13. **Free-form frame reconstruction** — non–Auto-Layout Figma frames render at
+    their source pixel positions (percentage-based absolute positioning +
+    `cqw`-scaled typography) across preview, Vue, and HTML output instead of
+    collapsing into a guessed stack (`docs/figma-preview-fidelity.md` §6).
 
 ## To Enable the AI Tier (operator, optional)
 
@@ -127,7 +131,7 @@ overall product contract but is not the current implementation scope.
 
 ```bash
 npm install
-npm run test       # 73 passing + 10 reconstruction-contract todos
+npm run test       # 74 passing + 10 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -135,6 +139,13 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **Claude (Anthropic) — 2026-07-01:** free-form frame reconstruction — added
+  the absolute-position fallback from `docs/figma-preview-fidelity.md` §6:
+  `layout.mode: 'free'` in the mapper, percentage-based absolute placement and
+  `cqw` typography scaling in both the live preview and the shared Vue/HTML
+  codegen, with renderer/export parity tests. Non–Auto-Layout frames no longer
+  collapse into a stacked flow.
 
 - **OpenAI Codex - 2026-06-30:** bounded durable Figma assets on
   `codex/reconstruction-contract`; added secure CDN materialization, provenance,
