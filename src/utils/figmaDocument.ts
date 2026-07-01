@@ -101,7 +101,7 @@ export interface FigmaNode {
   visible?: boolean;
 }
 
-const ALLOWED_FILE_TYPES = new Set(['design', 'file', 'proto']);
+const ALLOWED_FILE_TYPES = new Set(['design', 'file', 'proto', 'site']);
 const MAX_SCANNED_NODES = 2_000;
 
 export function parseFigmaUrl(input: string): ParsedFigmaUrl | null {

@@ -21,6 +21,7 @@ header to `https://api.figma.com`.
 - `https://www.figma.com/design/<file-key>/<name>?node-id=1-2`
 - `https://www.figma.com/file/<file-key>/<name>?node-id=1-2`
 - Legacy prototype links using `/proto/`
+- Figma Sites links using `/site/`
 
 A URL with `node-id` imports that selected node. A file URL without a node id
 imports the first top-level frame, component, component set, or section.

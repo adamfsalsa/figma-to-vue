@@ -15,6 +15,13 @@ describe('Figma document intake', () => {
       fileKey: 'XYZ789',
       nodeId: null,
     });
+
+    expect(
+      parseFigmaUrl('https://www.figma.com/site/uR6QQDjtV44qPmeoANOcrT/Brand-Guidelines?node-id=0-3&t=ignored'),
+    ).toEqual({
+      fileKey: 'uR6QQDjtV44qPmeoANOcrT',
+      nodeId: '0:3',
+    });
   });
 
   it('rejects non-Figma hosts and malformed file URLs', () => {
