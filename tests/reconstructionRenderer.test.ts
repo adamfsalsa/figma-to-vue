@@ -82,7 +82,70 @@ describe('source-dependent reconstruction rendering', () => {
     expect(columnSfc).toContain('flex-direction: column');
   });
 
-  it('renders Figma controls, grid constraints, and effects as usable native output', async () => {
+  it('reconstructs free (non-auto-layout) frames at their source positions', async () => {
+    const root: FigmaNode = {
+      id: 'free-root',
+      name: 'Poster hero',
+      type: 'FRAME',
+      absoluteBoundingBox: { width: 1000, height: 500, x: 100, y: 50 },
+      children: [
+        {
+          id: 'badge',
+          name: 'Badge',
+          type: 'RECTANGLE',
+          absoluteBoundingBox: { width: 200, height: 50, x: 850, y: 75 },
+          fills: [{ type: 'SOLID', color: { r: 1, g: 0.8, b: 0 } }],
+        },
+        {
+          id: 'headline',
+          name: 'Headline title',
+          type: 'TEXT',
+          characters: 'Overlapping, precisely placed copy',
+          absoluteBoundingBox: { width: 500, height: 120, x: 350, y: 250 },
+        },
+      ],
+    };
+    const imported = buildFigmaDocumentImport('Poster', root, null);
+    const region = imported.reconstruction.regions[0];
+    expect(region.layout).toMatchObject({ mode: 'free' });
+
+    const page = makeGeneratedPage({ reconstruction: imported.reconstruction });
+    const { container } = render(GeneratedPagePreview, { props: { page } });
+    const rootEl = container.querySelector('[data-reconstruction-region="figma-free-root"]') as HTMLElement;
+    expect(rootEl.style.position).toBe('relative');
+    expect(rootEl.style.aspectRatio).toBe('1000 / 500');
+    const badgeEl = container.querySelector('[data-reconstruction-region="figma-badge"]') as HTMLElement;
+    expect(badgeEl.style.position).toBe('absolute');
+    expect(badgeEl.style.left).toBe('75%');
+    expect(badgeEl.style.top).toBe('5%');
+    expect(badgeEl.style.width).toBe('20%');
+    expect(badgeEl.style.height).toBe('10%');
+    const headlineEl = container.querySelector('[data-reconstruction-region="figma-headline"]') as HTMLElement;
+    expect(headlineEl.style.left).toBe('25%');
+    expect(headlineEl.style.top).toBe('40%');
+    // Text keeps auto height so wrapped copy is not clipped.
+    expect(headlineEl.style.height).toBe('');
+
+    const plan = buildPagePlan({
+      analysis: createDefaultReferenceAnalysis(),
+      density: 'Comfortable',
+      notes: '',
+      pageType: 'Landing page',
+      referenceName: 'poster.fig',
+      tone: 'Faithful',
+      reconstruction: imported.reconstruction,
+    });
+    const sfc = generateVueSfc(plan);
+    const html = generatePageHtml(page);
+    for (const artifact of [sfc, html]) {
+      expect(artifact).toContain('rr--free');
+      expect(artifact).toContain('aspect-ratio: 1000 / 500');
+      expect(artifact).toContain('position: absolute; left: 75%; top: 5%; width: 20%; height: 10%');
+      expect(artifact).toContain('position: absolute; left: 25%; top: 40%; width: 50%; margin: 0');
+    }
+  });
+
+  it('renders Figma controls, free positioning, and effects as usable native output', async () => {
     const root: FigmaNode = {
       id: 'controls-root',
       name: 'Signup grid',
@@ -121,7 +184,13 @@ describe('source-dependent reconstruction rendering', () => {
     expect(screen.getByRole('searchbox', { name: 'Search field' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Learn more' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
-    expect((container.querySelector('[data-reconstruction-region="figma-controls-root"]') as HTMLElement).style.display).toBe('grid');
+    const rootEl = container.querySelector('[data-reconstruction-region="figma-controls-root"]') as HTMLElement;
+    expect(rootEl.style.position).toBe('relative');
+    const buttonEl = container.querySelector('[data-reconstruction-region="figma-button"]') as HTMLElement;
+    expect(buttonEl.style.position).toBe('absolute');
+    expect(buttonEl.style.left).toBe('50%');
+    expect(buttonEl.style.top).toBe('50%');
+    expect(buttonEl.style.width).toBe('45%');
     const axeResults = await axe(container, {
       rules: { 'color-contrast': { enabled: false } },
     });
@@ -139,7 +208,8 @@ describe('source-dependent reconstruction rendering', () => {
     const sfc = generateVueSfc(plan);
     const html = generatePageHtml(page);
     for (const artifact of [sfc, html]) {
-      expect(artifact).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+      expect(artifact).toContain('position: relative');
+      expect(artifact).toContain('position: absolute; left: 50%; top: 50%; width: 45%');
       expect(artifact).toContain('box-shadow: 0px 6px 18px 0px rgba(0, 0, 0, 0.2)');
       expect(artifact).toContain('type="email"');
       expect(artifact).toContain('href="#"');

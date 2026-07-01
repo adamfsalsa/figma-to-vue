@@ -5,6 +5,28 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### Free-form frame reconstruction - Claude (Anthropic) (2026-07-01)
+
+- Reconstruct free (non–Auto-Layout) Figma frames at their source pixel
+  positions: `toLayout` emits `layout.mode: 'free'` when the frame and all
+  mapped children carry positioned bounds, replacing the `inferFreeLayout`
+  row/column/grid guess that collapsed layered compositions into a stack
+  (the #1 "preview looks broken" cause). The flow guess remains only as a
+  fallback when bounds are missing.
+- Honor `free` in both renderers (live preview `ReconstructionRegion.vue` and
+  the shared `reconstructionCodegen.ts` used by Vue SFC + HTML export): the
+  frame becomes `position: relative` with its source `aspect-ratio`; children
+  are absolutely positioned with percentage `left/top/width/height` so the
+  composition scales with the preview width and preserves overlap/z-order.
+- Scale typography with the frame: free frames are `container-type:
+  inline-size` query containers and descendant text uses `cqw` font-size and
+  line-height, so copy no longer overflows its box at narrow widths; text
+  keeps auto height so wrapped copy is never clipped.
+- Update `docs/figma-preview-fidelity.md` (§6 fix now implemented), adjust the
+  two tests that asserted the old grid guess, and add renderer/export parity
+  coverage for free frames. Verified in-browser at desktop and 375px widths
+  with zero horizontal overflow.
+
 ### Figma reconstruction v2 foundation - OpenAI Codex (2026-06-30)
 
 - Preserve nested Figma regions, geometry, auto-layout, spacing, typography,

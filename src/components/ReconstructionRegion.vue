@@ -35,6 +35,8 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-bounds="region.bounds"
+      :parent-mode="region.layout?.mode"
     />
   </button>
 
@@ -55,6 +57,8 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-bounds="region.bounds"
+      :parent-mode="region.layout?.mode"
     />
   </a>
 
@@ -86,6 +90,8 @@
       :key="child.id"
       :region="child"
       :parent-width="region.bounds?.width"
+      :parent-bounds="region.bounds"
+      :parent-mode="region.layout?.mode"
     />
   </component>
 </template>
@@ -93,12 +99,38 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { CSSProperties } from 'vue';
-import type { ReconstructionRegion } from '../types/reconstructionPlan';
+import type { ReconstructionBounds, ReconstructionLayout, ReconstructionRegion } from '../types/reconstructionPlan';
 
 const props = defineProps<{
+  parentBounds?: ReconstructionBounds;
+  parentMode?: ReconstructionLayout['mode'];
   parentWidth?: number;
   region: ReconstructionRegion;
 }>();
+
+// A child of a free (non-auto-layout) frame keeps the source's pixel
+// placement, expressed as percentages of the frame so the whole composition
+// scales with the preview width.
+const absolutePlacement = computed<CSSProperties | null>(() => {
+  const parent = props.parentBounds;
+  const bounds = props.region.bounds;
+  if (
+    props.parentMode !== 'free'
+    || !parent || !Number.isFinite(parent.x) || !Number.isFinite(parent.y)
+    || parent.width <= 0 || parent.height <= 0
+    || !bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.y)
+  ) return null;
+  const pct = (value: number) => `${Math.round(Math.min(100, Math.max(0, value)) * 100) / 100}%`;
+  return {
+    position: 'absolute',
+    left: pct(((bounds.x! - parent.x!) / parent.width) * 100),
+    top: pct(((bounds.y! - parent.y!) / parent.height) * 100),
+    width: pct((bounds.width / parent.width) * 100),
+    // Text keeps auto height so wrapped copy isn't clipped by a scaled box.
+    ...(props.region.element === 'text' ? {} : { height: pct((bounds.height / parent.height) * 100) }),
+    margin: 0,
+  };
+});
 
 const regionStyle = computed<CSSProperties>(() => {
   const { bounds, layout, style } = props.region;
@@ -106,8 +138,18 @@ const regionStyle = computed<CSSProperties>(() => {
 
   if (layout) {
     if (props.region.children.length > 0) {
-      result.display = layout.mode === 'grid' ? 'grid' : 'flex';
-      if (layout.mode !== 'grid') result.flexDirection = layout.mode === 'row' ? 'row' : 'column';
+      if (layout.mode === 'free') {
+        result.position = 'relative';
+        // Free frames are query containers so descendant text can scale in
+        // cqw with the frame instead of overflowing its box at small widths.
+        result.containerType = 'inline-size';
+      } else {
+        result.display = layout.mode === 'grid' ? 'grid' : 'flex';
+        if (layout.mode !== 'grid') result.flexDirection = layout.mode === 'row' ? 'row' : 'column';
+      }
+    }
+    if (layout.mode === 'free' && bounds?.width && bounds?.height) {
+      result.aspectRatio = `${bounds.width} / ${bounds.height}`;
     }
     if (layout.gap !== undefined) result.gap = `${layout.gap}px`;
     if (layout.columns !== undefined && layout.mode === 'grid') {
@@ -129,10 +171,12 @@ const regionStyle = computed<CSSProperties>(() => {
     if (layout.sizeLimits?.maxHeight !== undefined) result.maxHeight = `${layout.sizeLimits.maxHeight}px`;
   }
 
-  if (bounds?.width && props.parentWidth && props.parentWidth > 0) {
+  if (absolutePlacement.value) {
+    Object.assign(result, absolutePlacement.value);
+  } else if (bounds?.width && props.parentWidth && props.parentWidth > 0) {
     result.flexBasis = `${Math.min(100, Math.max(1, (bounds.width / props.parentWidth) * 100))}%`;
   }
-  if (bounds?.width && bounds?.height && props.region.element === 'media') {
+  if (bounds?.width && bounds?.height && props.region.element === 'media' && !absolutePlacement.value) {
     result.aspectRatio = `${bounds.width} / ${bounds.height}`;
   }
 
@@ -144,10 +188,14 @@ const regionStyle = computed<CSSProperties>(() => {
   }
   if (style?.color) result.color = style.color;
   if (style?.fontFamily) result.fontFamily = style.fontFamily;
-  if (style?.fontSize !== undefined) result.fontSize = `${style.fontSize}px`;
+  const fontScaleBase = props.parentMode === 'free' && props.parentBounds && props.parentBounds.width > 0
+    ? props.parentBounds.width
+    : undefined;
+  const cqw = (value: number) => `${Math.round((value / fontScaleBase!) * 100 * 1000) / 1000}cqw`;
+  if (style?.fontSize !== undefined) result.fontSize = fontScaleBase ? cqw(style.fontSize) : `${style.fontSize}px`;
   if (style?.fontWeight !== undefined) result.fontWeight = style.fontWeight;
   if (style?.letterSpacing !== undefined) result.letterSpacing = `${style.letterSpacing}px`;
-  if (style?.lineHeight !== undefined) result.lineHeight = `${style.lineHeight}px`;
+  if (style?.lineHeight !== undefined) result.lineHeight = fontScaleBase ? cqw(style.lineHeight) : `${style.lineHeight}px`;
   if (style?.opacity !== undefined) result.opacity = style.opacity;
   if (style?.overflow) result.overflow = style.overflow;
   if (style?.boxShadow) result.boxShadow = style.boxShadow;

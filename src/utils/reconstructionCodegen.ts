@@ -1,4 +1,6 @@
 import type {
+  ReconstructionBounds,
+  ReconstructionLayout,
   ReconstructionPlan,
   ReconstructionRegion,
   ReconstructionStyle,
@@ -9,6 +11,12 @@ export interface ReconstructionArtifact {
   markup: string;
 }
 
+interface ParentContext {
+  bounds?: ReconstructionBounds;
+  mode?: ReconstructionLayout['mode'];
+  width?: number;
+}
+
 /**
  * Emits static, source-dependent semantic markup and CSS from a validated
  * reconstruction plan. This is shared by HTML and Vue SFC export so those
@@ -17,7 +25,7 @@ export interface ReconstructionArtifact {
 export function generateReconstructionArtifact(plan: ReconstructionPlan): ReconstructionArtifact {
   const cssRules: string[] = [];
   const markup = plan.regions
-    .map((region) => renderRegion(region, plan.viewport.width ?? undefined, cssRules))
+    .map((region) => renderRegion(region, { width: plan.viewport.width ?? undefined }, cssRules))
     .join('\n');
 
   return {
@@ -28,13 +36,13 @@ export function generateReconstructionArtifact(plan: ReconstructionPlan): Recons
 
 function renderRegion(
   region: ReconstructionRegion,
-  parentWidth: number | undefined,
+  parent: ParentContext,
   cssRules: string[],
 ): string {
   const className = safeClass(region.id);
   const layoutClass = region.layout ? ` rr--${region.layout.mode}` : '';
   const classes = `rr rr--${region.element}${layoutClass} ${className}`;
-  cssRules.push(buildRule(region, parentWidth, className));
+  cssRules.push(buildRule(region, parent, className));
 
   if (region.element === 'media') {
     if (region.asset?.url) {
@@ -63,22 +71,37 @@ function renderRegion(
   const fallbackLabel = region.children.length === 0 ? region.control?.label : undefined;
   const text = region.text ? escapeHtml(region.text) : fallbackLabel ? escapeHtml(fallbackLabel) : '';
   const children = region.children
-    .map((child) => renderRegion(child, region.bounds?.width, cssRules))
+    .map((child) => renderRegion(
+      child,
+      { width: region.bounds?.width, bounds: region.bounds, mode: region.layout?.mode },
+      cssRules,
+    ))
     .join('\n');
   return `<${tag}${attributes} class="${classes}" data-reconstruction-region="${escapeHtml(region.id)}">${text}${children}</${tag}>`;
 }
 
 function buildRule(
   region: ReconstructionRegion,
-  parentWidth: number | undefined,
+  parent: ParentContext,
   className: string,
 ): string {
   const declarations: string[] = [];
   const { bounds, layout, style } = region;
+  const placement = absolutePlacement(region, parent);
   if (layout) {
     if (region.children.length > 0) {
-      declarations.push(`display: ${layout.mode === 'grid' ? 'grid' : 'flex'}`);
-      if (layout.mode !== 'grid') declarations.push(`flex-direction: ${layout.mode === 'row' ? 'row' : 'column'}`);
+      if (layout.mode === 'free') {
+        declarations.push('position: relative');
+        // Free frames are query containers so descendant text scales in cqw
+        // with the frame instead of overflowing its box at small widths.
+        declarations.push('container-type: inline-size');
+      } else {
+        declarations.push(`display: ${layout.mode === 'grid' ? 'grid' : 'flex'}`);
+        if (layout.mode !== 'grid') declarations.push(`flex-direction: ${layout.mode === 'row' ? 'row' : 'column'}`);
+      }
+    }
+    if (layout.mode === 'free' && bounds?.width && bounds.height) {
+      declarations.push(`aspect-ratio: ${number(bounds.width)} / ${number(bounds.height)}`);
     }
     if (layout.gap !== undefined) declarations.push(`gap: ${px(layout.gap)}`);
     if (layout.columns !== undefined && layout.mode === 'grid') {
@@ -99,18 +122,55 @@ function buildRule(
     if (layout.sizeLimits?.minHeight !== undefined) declarations.push(`min-height: ${px(layout.sizeLimits.minHeight)}`);
     if (layout.sizeLimits?.maxHeight !== undefined) declarations.push(`max-height: ${px(layout.sizeLimits.maxHeight)}`);
   }
-  if (bounds?.width && parentWidth && parentWidth > 0) {
-    declarations.push(`flex-basis: ${percent((bounds.width / parentWidth) * 100)}`);
+  if (placement) {
+    declarations.push(...placement);
+  } else if (bounds?.width && parent.width && parent.width > 0) {
+    declarations.push(`flex-basis: ${percent((bounds.width / parent.width) * 100)}`);
   }
-  if (bounds?.width && bounds.height && region.element === 'media') {
+  if (bounds?.width && bounds.height && region.element === 'media' && !placement) {
     declarations.push(`aspect-ratio: ${number(bounds.width)} / ${number(bounds.height)}`);
   }
-  appendStyle(declarations, style);
+  const fontScaleBase = parent.mode === 'free' && parentBoundsWidth(parent) ? parentBoundsWidth(parent) : undefined;
+  appendStyle(declarations, style, fontScaleBase);
   return `.${className} { ${declarations.join('; ')}; }`;
 }
 
-function appendStyle(declarations: string[], style: ReconstructionStyle | undefined): void {
+function parentBoundsWidth(parent: ParentContext): number | undefined {
+  return parent.bounds && parent.bounds.width > 0 ? parent.bounds.width : undefined;
+}
+
+/**
+ * Children of a free (non-auto-layout) frame keep the source's pixel
+ * placement as percentages of the frame, matching the live preview renderer.
+ */
+function absolutePlacement(region: ReconstructionRegion, parent: ParentContext): string[] | null {
+  const parentBounds = parent.bounds;
+  const bounds = region.bounds;
+  if (
+    parent.mode !== 'free'
+    || !parentBounds || !Number.isFinite(parentBounds.x) || !Number.isFinite(parentBounds.y)
+    || parentBounds.width <= 0 || parentBounds.height <= 0
+    || !bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.y)
+  ) return null;
+  return [
+    'position: absolute',
+    `left: ${percentClamped(((bounds.x! - parentBounds.x!) / parentBounds.width) * 100)}`,
+    `top: ${percentClamped(((bounds.y! - parentBounds.y!) / parentBounds.height) * 100)}`,
+    `width: ${percentClamped((bounds.width / parentBounds.width) * 100)}`,
+    ...(region.element === 'text'
+      ? []
+      : [`height: ${percentClamped((bounds.height / parentBounds.height) * 100)}`]),
+    'margin: 0',
+  ];
+}
+
+function appendStyle(
+  declarations: string[],
+  style: ReconstructionStyle | undefined,
+  fontScaleBase?: number,
+): void {
   if (!style) return;
+  const cqw = (value: number) => `${number((value / fontScaleBase!) * 100)}cqw`;
   if (style.background) declarations.push(`background: ${safeCssToken(style.background)}`);
   if (style.borderColor) declarations.push(`border: ${px(style.borderWidth ?? 1)} solid ${safeCssToken(style.borderColor)}`);
   if (style.borderRadius !== undefined) declarations.push(`border-radius: ${px(style.borderRadius)}`);
@@ -119,10 +179,14 @@ function appendStyle(declarations: string[], style: ReconstructionStyle | undefi
   }
   if (style.color) declarations.push(`color: ${safeCssToken(style.color)}`);
   if (style.fontFamily) declarations.push(`font-family: ${safeFont(style.fontFamily)}`);
-  if (style.fontSize !== undefined) declarations.push(`font-size: ${px(style.fontSize)}`);
+  if (style.fontSize !== undefined) {
+    declarations.push(`font-size: ${fontScaleBase ? cqw(style.fontSize) : px(style.fontSize)}`);
+  }
   if (style.fontWeight !== undefined) declarations.push(`font-weight: ${number(style.fontWeight)}`);
   if (style.letterSpacing !== undefined) declarations.push(`letter-spacing: ${px(style.letterSpacing)}`);
-  if (style.lineHeight !== undefined) declarations.push(`line-height: ${px(style.lineHeight)}`);
+  if (style.lineHeight !== undefined) {
+    declarations.push(`line-height: ${fontScaleBase ? cqw(style.lineHeight) : px(style.lineHeight)}`);
+  }
   if (style.opacity !== undefined) declarations.push(`opacity: ${number(style.opacity)}`);
   if (style.overflow) declarations.push(`overflow: ${style.overflow}`);
   if (style.boxShadow) declarations.push(`box-shadow: ${safeShadow(style.boxShadow)}`);
@@ -162,6 +226,10 @@ function px(value: number): string {
 
 function percent(value: number): string {
   return `${number(Math.min(100, Math.max(1, value)))}%`;
+}
+
+function percentClamped(value: number): string {
+  return `${number(Math.min(100, Math.max(0, value)))}%`;
 }
 
 function number(value: number): string {

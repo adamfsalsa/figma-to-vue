@@ -1,7 +1,7 @@
 <template>
   <main class="app-shell">
     <section class="hero" aria-labelledby="page-title">
-      <p class="eyebrow">AI-assisted design to code case study</p>
+      <p class="eyebrow">Design reference to Vue 3, in one pass</p>
       <h1 id="page-title">Figma to Vue pipeline</h1>
       <p class="hero__summary">
         Drop in a design reference, answer a few formatting questions, and turn
@@ -13,7 +13,6 @@
     <section class="pipeline-board" aria-labelledby="pipeline-title">
       <div class="pipeline-board__header">
         <div>
-          <p class="eyebrow">Working prototype</p>
           <h2 id="pipeline-title">Reference intake</h2>
         </div>
         <p class="pipeline-board__note">
@@ -90,7 +89,7 @@
 
           <div v-if="referencePreview" class="ai-enhance">
             <button type="button" :disabled="aiAnalysisPending" @click="enhanceWithAi">
-              {{ aiAnalysisPending ? 'Asking AI…' : 'Enhance with AI (optional)' }}
+              {{ aiAnalysisPending ? 'Asking AI…' : 'Enhance with AI' }}
             </button>
             <p class="copy-status" role="status">{{ aiAnalysisStatus }}</p>
           </div>
@@ -99,8 +98,8 @@
         <section class="panel" aria-labelledby="assistant-title">
           <h3 id="assistant-title">2. Formatting assistant</h3>
           <p class="panel__intro">
-            This intentionally keeps LLM support basic: it gathers formatting
-            preferences and turns them into a structured implementation brief.
+            Answer a few formatting questions and they become a structured
+            implementation brief for the generated page.
           </p>
 
           <div class="field-group">
@@ -195,8 +194,8 @@
 
       <details class="disclosure">
         <summary class="disclosure__summary">
-          <span class="disclosure__title">Developer output</span>
-          <span class="disclosure__meta">JSON plan · Vue component · HTML</span>
+          <span class="disclosure__title">Export code</span>
+          <span class="disclosure__meta">Vue component · page plan (JSON) · HTML</span>
         </summary>
         <div class="disclosure__body">
           <div class="code-toolbar">
@@ -215,13 +214,20 @@
           </div>
 
           <div class="code-block">
-            <p class="code-block__label" id="plan-title">JSON page plan</p>
-            <pre aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
+            <p class="code-block__label" id="plan-title">Page plan (JSON)</p>
+            <pre v-if="pagePlan" aria-label="Generated JSON page plan">{{ generatedPlanJson }}</pre>
+            <p v-else class="empty-state">
+              Generate a page plan to see the typed JSON contract that drives the
+              Vue and HTML output.
+            </p>
           </div>
 
           <div class="code-block">
             <p class="code-block__label" id="sfc-title">Vue component (.vue)</p>
-            <pre aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
+            <pre v-if="pagePlan" aria-label="Generated Vue single-file component">{{ generatedVueSfc }}</pre>
+            <p v-else class="empty-state">
+              The generated single-file component appears here once a plan exists.
+            </p>
           </div>
         </div>
       </details>
