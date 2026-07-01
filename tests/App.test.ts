@@ -7,7 +7,7 @@ describe('App pipeline console', () => {
     render(App);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Figma to Vue pipeline' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'Reference intake' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Figma import' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: '2. Formatting assistant' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Reference analyzer' })).toBeInTheDocument();
     expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent('Pipeline gates:');
@@ -39,18 +39,12 @@ describe('App pipeline console', () => {
     expect(brief).toHaveTextContent('Keep the first viewport focused.');
   });
 
-  it('previews a dropped reference image name in the brief', async () => {
+  it('presents Figma as the only active reference source', () => {
     render(App);
 
-    const file = new File(['reference'], 'finder-reference.png', { type: 'image/png' });
-    const input = screen.getByLabelText('Upload reference image');
-
-    await userEvent.upload(input, file);
-
-    expect(await screen.findAllByText('finder-reference.png')).toHaveLength(2);
-    expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent(
-      'Reference: finder-reference.png',
-    );
+    expect(screen.queryByLabelText('Upload reference image')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Figma file, frame, or Site URL')).toBeInTheDocument();
+    expect(screen.getByLabelText('Generated implementation brief')).toHaveTextContent('Reference: Awaiting Figma import');
   });
 
   it('generates a constrained JSON page plan from the current answers', async () => {
@@ -173,7 +167,7 @@ describe('App pipeline console', () => {
     render(App);
 
     await user.type(
-      screen.getByLabelText('Figma file or frame URL'),
+      screen.getByLabelText('Figma file, frame, or Site URL'),
       'https://www.figma.com/design/ABC123/Commerce?node-id=1-2',
     );
     await user.click(screen.getByRole('button', { name: 'Import from Figma' }));

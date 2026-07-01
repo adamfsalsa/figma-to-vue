@@ -4,9 +4,8 @@
       <p class="eyebrow">AI-assisted design to code case study</p>
       <h1 id="page-title">Figma to Vue pipeline</h1>
       <p class="hero__summary">
-        Drop in a design reference, answer a few formatting questions, and turn
-        the result into a reviewable frontend brief that can move through Git
-        and on to deployment.
+        Import a Figma file, frame, or Site, answer a few formatting questions,
+        and turn its structured design data into a reviewable Vue page.
       </p>
     </section>
 
@@ -14,17 +13,20 @@
       <div class="pipeline-board__header">
         <div>
           <p class="eyebrow">Working prototype</p>
-          <h2 id="pipeline-title">Reference intake</h2>
+          <h2 id="pipeline-title">Figma import</h2>
         </div>
         <p class="pipeline-board__note">
-          Uploaded images stay local unless you choose Enhance with AI. Figma URLs are sent only when you choose Import.
+          Your Figma URL is sent to the server only when you choose Import. The access token remains server-side.
         </p>
       </div>
 
       <div class="workspace-grid">
-        <section class="panel" aria-labelledby="upload-title">
-          <h3 id="upload-title">1. Add a reference</h3>
+        <section class="panel" aria-labelledby="intake-title">
+          <h3 id="intake-title">1. Import from Figma</h3>
+          <!-- Image upload is intentionally retained behind this reversible
+               scope flag while the public workflow focuses on Figma import. -->
           <label
+            v-if="imageReferenceIntakeEnabled"
             class="drop-zone"
             :class="{ 'drop-zone--active': isDragging }"
             @dragenter.prevent="isDragging = true"
@@ -45,9 +47,9 @@
           </label>
 
           <form class="figma-import" @submit.prevent="importFigmaReference">
-            <p class="figma-import__divider"><span>or import a live frame</span></p>
+            <p v-if="imageReferenceIntakeEnabled" class="figma-import__divider"><span>or import from Figma</span></p>
             <div class="field-group">
-              <label for="figmaUrl">Figma file or frame URL</label>
+              <label for="figmaUrl">Figma file, frame, or Site URL</label>
               <input
                 id="figmaUrl"
                 v-model.trim="figmaUrl"
@@ -67,7 +69,7 @@
             <figcaption>{{ referenceName }}</figcaption>
           </figure>
           <p v-else class="empty-state">
-            Start with a screenshot, exported Figma frame, or product reference.
+            Paste a link to a Figma design, selected frame, prototype, or Site.
           </p>
 
           <div v-if="visualTokens.palette.length > 0" class="palette-preview">
@@ -188,7 +190,7 @@
       <div v-else class="preview-placeholder">
         <h3>No page generated yet</h3>
         <p>
-          Add a reference or adjust the formatting answers, then preview the
+          Import from Figma or adjust the formatting answers, then preview the
           one-page result.
         </p>
       </div>
@@ -321,6 +323,9 @@ const deliverySteps: DeliveryStep[] = [
   },
 ];
 
+// Temporary product-scope switch: the image upload implementation remains
+// available in this file, but the current UI intentionally exposes Figma only.
+const imageReferenceIntakeEnabled = false;
 const isDragging = ref(false);
 const referenceName = ref('No reference selected');
 const referenceFile = ref<File | null>(null);
@@ -346,7 +351,7 @@ let previewTrigger: HTMLElement | null = null;
 const generatedBrief = computed(() => {
   const referenceLine = referencePreview.value
     ? `Reference: ${referenceName.value}`
-    : 'Reference: Awaiting uploaded image or screenshot';
+    : 'Reference: Awaiting Figma import';
   const notes = formatting.notes.trim() || 'No extra formatting notes yet.';
 
   return [

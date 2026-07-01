@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-01 — Figma-only intake surface
+
+- Temporarily hid reference-image upload behind a labeled, reversible UI scope flag.
+- Updated the active intake copy and accessible labels to present Figma file,
+  frame, prototype, and Site import as the sole reference workflow.
+- Retained the image ingestion implementation for later reactivation.
+
 Agent ownership is stated explicitly so work from parallel coding assistants
 can be reviewed and merged without ambiguity.
 
