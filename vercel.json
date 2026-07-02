@@ -11,7 +11,7 @@
   ],
   "functions": {
     "api/analyze.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "api/figma.ts": {
       "maxDuration": 30

@@ -34,10 +34,13 @@ in `src/App.vue`). It is:
 
 - **Optional and manual** — nothing calls it automatically.
 - **Fed the rendered PNG** Figma returns (not the file structure).
-- **Scoped to semantics + copy only** — it merges into `referenceAnalysis`
-  (hero composition, layout pattern, CTA style) and `aiContent` (generated page
-  copy). **It never modifies the reconstruction region tree**, so it cannot fix
-  or change how a frame lays out in the preview.
+- **Scoped to semantics + copy for Figma imports** — it merges into
+  `referenceAnalysis` (hero composition, layout pattern, CTA style) and
+  `aiContent` (generated page copy). It also proposes a spatial
+  reconstruction plan, but that is applied **only for uploaded images**: a
+  Figma import already holds an exact document-derived plan, and `App.vue`
+  never overwrites it with a visual guess. So for the Figma path it cannot
+  fix or change how a frame lays out in the preview.
 - **Gated** — it refuses to run unless BOTH `ANTHROPIC_API_KEY` and the Upstash
   rate-limit store (`UPSTASH_REDIS_REST_URL` + `_TOKEN`) are configured;
   otherwise it returns `not_configured`.

@@ -5,6 +5,26 @@ can be reviewed and merged without ambiguity.
 
 ## Unreleased
 
+### AI image → reconstruction plan - Claude (Anthropic) (2026-07-01)
+
+- "Enhance with AI" on an uploaded image now also returns a model-proposed
+  spatial region tree (element, global bounds in a fixed 1440-wide space,
+  visible text, fills, font sizing, per-region confidence), so an image
+  reference drives the same source-dependent renderer as a Figma import
+  instead of one of four broad templates.
+- Add `sanitizeReconstruction()` in `api/analyze.ts` as the contract's safety
+  boundary: the model returns structured data only, and every field is
+  validated/clamped into the reconstruction-plan v2 schema (region count and
+  depth caps, `#rrggbb`-only colors, non-finite geometry dropped, off-list
+  elements coerced, media and low-confidence regions flagged review-required).
+- Apply the validated plan client-side only for uploaded images — a Figma
+  import's exact document-derived plan is never overwritten by a visual guess.
+- Raise `max_tokens` to 4096 and the analyze timeouts to 55s (client) / 60s
+  (`vercel.json` maxDuration) for the heavier call.
+- Activate acceptance gate `RCN-03` (Figma and image evidence normalize to the
+  same versioned plan schema) and add a sanitizer/renderer/axe test suite
+  (`tests/analyzeReconstruction.test.ts`).
+
 ### Free-form frame reconstruction - Claude (Anthropic) (2026-07-01)
 
 - Reconstruct free (non–Auto-Layout) Figma frames at their source pixel

@@ -80,26 +80,42 @@ Implemented now:
   server-side with a timeout and byte-size cap before being handed to the model
   in the same shape as an upload).
 - A real **`claude-sonnet-4-6`** vision call. The model returns a JSON object
-  that (a) classifies the layout into the `ReferenceAnalysis` enums and (b)
+  that (a) classifies the layout into the `ReferenceAnalysis` enums, (b)
   **generates the page copy** — kicker, title, summary, and 2–4 sections —
-  under a `content` key. The prompt instructs it to read and adapt real text
-  when the reference is a clean mockup/Figma frame, and to **invent coherent,
-  premium copy when the reference is vague** (a sketch or scribble), always
-  returning complete content. Both halves are validated/sanitized server-side
-  (enums dropped if off-list; content trimmed/capped), so a malformed response
-  degrades gracefully. `max_tokens` is 1536 to leave room for the generated copy.
+  under a `content` key, and (c) **proposes a spatial reconstruction plan**
+  under a `reconstruction` key: a region tree (element type, global bounds in
+  a fixed 1440-wide coordinate space, visible text, fills/colors, font sizing,
+  per-region confidence). The prompt instructs it to read and adapt real text
+  when the reference is a clean mockup/Figma frame, to **invent coherent,
+  premium copy when the reference is vague** (a sketch or scribble), and to
+  omit `reconstruction` entirely rather than invent geometry it cannot see.
+  All three halves are validated/sanitized server-side: enums dropped if
+  off-list, content trimmed/capped, and the region tree normalized by
+  `sanitizeReconstruction()` into the same reconstruction-plan v2 schema the
+  Figma path produces (counts/depth capped, colors must be `#rrggbb`,
+  non-finite geometry dropped, media flagged review-required — see
+  `tests/analyzeReconstruction.test.ts`). The model returns structured data
+  only, never code — the contract's safety boundary. `max_tokens` is 4096 to
+  leave room for copy plus the region tree.
 - Timeouts sized for that heavier call: the client (`src/utils/aiAnalysis.ts`)
-  aborts after 25s, and `vercel.json` sets `functions["api/analyze.ts"].
-  maxDuration: 30` so the server-side limit isn't the platform default (10s on
-  Vercel's free tier — too tight for Sonnet vision + content generation plus a
-  cold start). If "Enhance with AI" ever shows *"AI analysis is unavailable
-  right now"* despite the keys being configured, a slow cold-started call
-  timing out is the most likely cause — retrying usually succeeds once the
-  function is warm. For the full diagnosis method and an error-flag reference,
-  see `docs/troubleshooting-ai.md`.
+  aborts after 55s, and `vercel.json` sets `functions["api/analyze.ts"].
+  maxDuration: 60` so the server-side limit isn't the platform default (10s on
+  Vercel's free tier — too tight for Sonnet vision + content + plan generation
+  plus a cold start). If "Enhance with AI" ever shows *"AI analysis is
+  unavailable right now"* despite the keys being configured, a slow
+  cold-started call timing out is the most likely cause — retrying usually
+  succeeds once the function is warm. For the full diagnosis method and an
+  error-flag reference, see `docs/troubleshooting-ai.md`.
 - The generated `content` flows into `buildPagePlan` as an override, so the
   rendered page (preview, Vue SFC, HTML) shows copy derived from the image
   instead of the deterministic templated placeholder text.
+- The validated `reconstruction` plan is applied **only for uploaded images**
+  (`App.vue` → `enhanceWithAi`): a Figma import already holds an exact
+  document-derived plan that a visual guess must never overwrite. With it,
+  an uploaded screenshot drives the same source-dependent renderer as a Figma
+  import — regions at their observed positions — instead of one of the four
+  broad templates. Media regions render as labeled placeholders (a flat image
+  has no extractable assets) and are listed in `confidence.reviewRequired`.
 - Durable per-IP and global-daily rate limiting backed by Upstash Redis (see
   below).
 - A structured `{ ok, reason, message }` response contract the frontend
@@ -160,7 +176,7 @@ Cost math (Sonnet 4.6, $3/MTok in, $15/MTok out): because the call now also
 generates page copy (not just classifies), each "Enhance with AI" generation is
 roughly **$0.02–0.05**, so **$5 ≈ 100–250 generations** before it falls back to
 the free local analyzer. Two code-side levers bound per-call cost: `max_tokens:
-1536` in `api/analyze.ts`, and client-side image downscaling to a 768px max edge
+4096` in `api/analyze.ts`, and client-side image downscaling to a 768px max edge
 before upload (`fileToDownscaledDataUrl` in `src/utils/aiAnalysis.ts`).
 
 > The detailed, click-by-click operator steps for adding the key live in
