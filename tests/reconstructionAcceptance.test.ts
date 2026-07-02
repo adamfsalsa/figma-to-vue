@@ -7,6 +7,7 @@ import { buildPagePlan } from '../src/utils/pagePlan';
 import { generateVueSfc } from '../src/utils/vueCodegen';
 import { buildFigmaDocumentImport, type FigmaNode } from '../src/utils/figmaDocument';
 import { generatePageHtml } from '../src/utils/htmlExport';
+import { sanitizeReconstruction } from '../api/analyze';
 
 /**
  * Release-blocking acceptance backlog for keystone 18.
@@ -46,17 +47,38 @@ describe('core reconstruction acceptance', () => {
     expect(generatePageHtml(page)).not.toContain('blob:complete-source-frame');
   });
 
-  it.todo('RCN-03: Figma and image evidence normalize to the same versioned spatial plan schema', () => {
-    const figmaPlan = makePlan();
-    const imagePlan = makePlan();
+  it('RCN-03: Figma and image evidence normalize to the same versioned spatial plan schema', () => {
+    const figmaPlan = makeFigmaComposition('HORIZONTAL').reconstruction;
+    const imagePlan = sanitizeReconstruction({
+      pageHeight: 900,
+      regions: [
+        {
+          name: 'Hero',
+          element: 'section',
+          x: 0,
+          y: 0,
+          width: 1440,
+          height: 620,
+          confidence: 0.8,
+          children: [
+            { name: 'Headline', element: 'text', text: 'Observed copy', x: 120, y: 180, width: 700, height: 120, fontSize: 48 },
+          ],
+        },
+      ],
+    }, 'reference.png');
 
-    for (const plan of [figmaPlan, imagePlan]) {
+    expect(imagePlan).toBeDefined();
+    for (const plan of [figmaPlan, imagePlan!]) {
       expect(plan.schemaVersion).toBe('figma-to-vue.reconstruction-plan.v2');
-      expect(plan).toHaveProperty('regions');
-      expect(plan).toHaveProperty('evidence');
-      expect(plan).toHaveProperty('confidence');
+      expect(plan.viewport.width).toBeGreaterThan(0);
+      expect(plan.regions.length).toBeGreaterThan(0);
+      expect(plan.regions[0].element).toBe('page');
+      expect(plan.regions[0].evidence.confidence).toBeGreaterThan(0);
+      expect(Array.isArray(plan.confidence.reviewRequired)).toBe(true);
       expect(plan).toHaveProperty('overrides');
     }
+    expect(figmaPlan.regions[0].evidence.source).toBe('figma');
+    expect(imagePlan!.regions[0].evidence.source).toBe('image');
   });
 
   it.todo('RCN-04: detected region count, hierarchy, and order survive plan-to-preview rendering', () => {

@@ -11,8 +11,8 @@ dropdown work have been merged. Figma imports now have a source-dependent v2
 renderer; image-only references still fall back to the broad v1 templates.
 
 - **Build / typecheck / implemented tests all green:** `npm run build`,
-  `npm run typecheck`, `npm run test` report 74 passing tests plus 10 explicit
-  reconstruction-contract todos across 14 files. The todos are release blockers.
+  `npm run typecheck`, `npm run test` report 80 passing tests plus 9 explicit
+  reconstruction-contract todos across 15 files. The todos are release blockers.
 - **Deploys on Vercel** as a static Vite build. The app is fully usable with no
   configuration — the AI tier is optional and dormant by default.
 
@@ -55,6 +55,12 @@ renderer; image-only references still fall back to the broad v1 templates.
     their source pixel positions (percentage-based absolute positioning +
     `cqw`-scaled typography) across preview, Vue, and HTML output instead of
     collapsing into a guessed stack (`docs/figma-preview-fidelity.md` §6).
+14. **AI image → reconstruction plan** — "Enhance with AI" on an uploaded image
+    now also returns a model-proposed region tree, validated server-side by
+    `sanitizeReconstruction()` (`api/analyze.ts`) into the same
+    reconstruction-plan v2 schema the Figma path produces, and applied only for
+    uploads (never overwriting an exact Figma plan). Activates the `RCN-03`
+    schema-parity gate (`docs/ai-analysis.md`).
 
 ## To Enable the AI Tier (operator, optional)
 
@@ -98,10 +104,12 @@ overall product contract but is not the current implementation scope.
   on the deployed site returns HTTP 200 with full analysis + generated copy in
   ~8s. If "Enhance with AI" ever misbehaves, `docs/troubleshooting-ai.md` has the
   diagnosis method and a "Key flags for API errors" table.
-- **Image-only rendering still changes content more than visual structure.**
-  This is a known blocking gap, not a deliberate final design. The new Figma v2
-  route proves validated plan-driven reconstruction without letting a model
-  write or execute arbitrary CSS/code; image analysis must now reach parity.
+- **Image-only structure now depends on the AI tier.** With the AI tier
+  configured, an uploaded image yields a validated reconstruction plan (see
+  What's Done #14) and drives the source-dependent renderer. Without the key,
+  the free local path still falls back to the four broad templates — closing
+  that no-key gap (e.g. local geometric region detection) remains open work,
+  as do correction UI, responsive review, and the remaining `RCN` gates.
 - **Standalone preview:** the styled HTML export (`src/utils/htmlExport.ts`) is
   now a real `h1`-rooted page with the CTA, but the live preview overlay still
   renders the in-app `h3`/`h4` component. Add an "open in new tab" action that
@@ -131,7 +139,7 @@ overall product contract but is not the current implementation scope.
 
 ```bash
 npm install
-npm run test       # 74 passing + 10 reconstruction-contract todos
+npm run test       # 80 passing + 9 reconstruction-contract todos
 npm run test:api-runtime
 npm run typecheck
 npm run build
@@ -139,6 +147,16 @@ npm run dev        # local preview at http://localhost:5173
 ```
 
 ## Agent Ownership Log
+
+- **Claude (Anthropic) — 2026-07-01:** AI image → reconstruction plan — the
+  `/api/analyze` call now also proposes a spatial region tree, validated by an
+  exported `sanitizeReconstruction()` into the reconstruction-plan v2 schema
+  (counts/depth capped, colors/geometry validated, media + low-confidence
+  regions flagged review-required), applied client-side only for uploaded
+  images. Raised `max_tokens` to 4096 and the analyze timeouts to 55s/60s.
+  Activated acceptance gate `RCN-03`. Also merged PR #16 (free-form frame
+  fix) to `main` and verified the deployed import end to end with a
+  `node-id` frame link.
 
 - **Claude (Anthropic) — 2026-07-01:** free-form frame reconstruction — added
   the absolute-position fallback from `docs/figma-preview-fidelity.md` §6:

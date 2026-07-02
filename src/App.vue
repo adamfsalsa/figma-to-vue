@@ -513,9 +513,18 @@ async function enhanceWithAi() {
     if (result.ok) {
       referenceAnalysis.value = { ...referenceAnalysis.value, ...result.analysis };
       aiContent.value = result.content ?? null;
-      aiAnalysisStatus.value = result.content
-        ? 'AI analysis and page copy applied. Generate a preview to see it.'
-        : 'AI analysis applied. Review the fields below before continuing.';
+      // Apply the AI-inferred spatial plan only for uploaded images. A Figma
+      // import already holds an exact document-derived plan that a visual
+      // guess must never overwrite.
+      const appliedReconstruction = Boolean(referenceFile.value && result.reconstruction);
+      if (appliedReconstruction) {
+        reconstruction.value = result.reconstruction ?? null;
+      }
+      aiAnalysisStatus.value = appliedReconstruction
+        ? 'AI analysis, page copy, and layout structure applied. Generate a preview to see it.'
+        : result.content
+          ? 'AI analysis and page copy applied. Generate a preview to see it.'
+          : 'AI analysis applied. Review the fields below before continuing.';
     } else {
       aiAnalysisStatus.value = result.message;
     }

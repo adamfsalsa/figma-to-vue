@@ -1,26 +1,34 @@
 import type { ReferenceAnalysis } from '../types/referenceAnalysis';
 import type { GeneratedContent } from '../types/pagePlan';
+import type { ReconstructionPlan } from '../types/reconstructionPlan';
 
 export type AiAnalysisResult =
-  | { ok: true; analysis: Partial<ReferenceAnalysis>; content?: GeneratedContent }
+  | {
+      ok: true;
+      analysis: Partial<ReferenceAnalysis>;
+      content?: GeneratedContent;
+      reconstruction?: ReconstructionPlan;
+    }
   | { ok: false; reason: string; message: string };
 
 interface AnalyzeApiPayload {
   ok?: boolean;
   analysis?: Partial<ReferenceAnalysis>;
   content?: GeneratedContent;
+  reconstruction?: ReconstructionPlan;
   reason?: string;
   message?: string;
   providerStatus?: number;
 }
 
 // 8s was tuned for the original lightweight classify-only Haiku call
-// (max_tokens 512). The proxy now uses Sonnet and also generates page copy
-// (max_tokens 1536), which legitimately takes longer — especially on a cold
-// serverless start. 25s leaves headroom under the 30s server-side limit set
-// in vercel.json (functions["api/analyze.ts"].maxDuration) so the client
-// times out gracefully before Vercel would kill the function outright.
-const REQUEST_TIMEOUT_MS = 25_000;
+// (max_tokens 512). The proxy now uses Sonnet to generate page copy AND a
+// spatial reconstruction plan (max_tokens 4096), which legitimately takes
+// longer — especially on a cold serverless start. 55s leaves headroom under
+// the 60s server-side limit set in vercel.json
+// (functions["api/analyze.ts"].maxDuration) so the client times out
+// gracefully before Vercel would kill the function outright.
+const REQUEST_TIMEOUT_MS = 55_000;
 
 /** Either an uploaded file's downscaled data URL, or a Figma-imported preview URL. */
 export type AiAnalysisSource = { image: string } | { imageUrl: string };
@@ -60,7 +68,12 @@ export async function requestAiAnalysis(source: AiAnalysisSource): Promise<AiAna
       };
     }
 
-    return { ok: true, analysis: payload.analysis ?? {}, content: payload.content };
+    return {
+      ok: true,
+      analysis: payload.analysis ?? {},
+      content: payload.content,
+      reconstruction: payload.reconstruction,
+    };
   } catch {
     return {
       ok: false,

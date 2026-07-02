@@ -45,6 +45,13 @@ import type {
   ReferenceAnalysis,
 } from '../src/types/referenceAnalysis';
 import type { GeneratedContent } from '../src/types/pagePlan';
+import type {
+  ReconstructionElement,
+  ReconstructionPlan,
+  ReconstructionRegion,
+  ReconstructionStyle,
+  ReconstructionTag,
+} from '../src/types/reconstructionPlan';
 
 interface ApiRequest {
   method?: string;
@@ -68,6 +75,13 @@ type AnalyzeSuccessResponse = {
   ok: true;
   analysis: Partial<ReferenceAnalysis>;
   content?: GeneratedContent;
+  /**
+   * Validated spatial reconstruction plan inferred from the image, in the
+   * same v2 schema the Figma path produces. Only structured data crosses this
+   * boundary — the model never returns code, and every field is sanitized
+   * against the schema before it reaches the renderer.
+   */
+  reconstruction?: ReconstructionPlan;
 };
 
 type AnalyzeErrorResponse = {
@@ -189,6 +203,28 @@ const ANALYSIS_SYSTEM_PROMPT = [
   '  coherent, plausible, premium copy that fits the apparent product and intent.',
   '- Always return complete, non-empty content. Never leave fields blank and',
   '  never refuse — produce the best premium page you can from whatever is shown.',
+  '',
+  'ALSO capture the page structure geometrically under a "reconstruction"',
+  'object. Work in a fixed coordinate space 1440 units wide: mentally scale the',
+  'design so its width is 1440, and give all positions/sizes in that space as',
+  'GLOBAL page coordinates (relative to the top-left of the whole page, never',
+  'to the parent region):',
+  '- "reconstruction.pageHeight": total page height in that space (integer)',
+  '- "reconstruction.regions": the visible layout regions in reading order.',
+  '  Each region is {"name": short descriptive layer name, "element": one of',
+  `  ${JSON.stringify(['section', 'group', 'card', 'text', 'media', 'button', 'link', 'input'])},`,
+  '  "x", "y", "width", "height": integers, "confidence": 0 to 1 (how certain',
+  '  you are about this region), and optionally: "text" (the visible copy for',
+  '  text/button/link elements — read it faithfully), "background" ("#rrggbb"',
+  '  fill if clearly visible), "color" ("#rrggbb" text color), "fontSize"',
+  '  (integer, in the same 1440-wide space), "fontWeight" (400/500/600/700),',
+  '  "children" (nested regions of the same shape, at most 2 levels deep).',
+  '- Use at most 40 regions total. Cover the page top to bottom; regions may',
+  '  overlap where the design overlaps.',
+  '- Mark photographs/illustrations as "media"; mark clickable-looking pills or',
+  '  filled rectangles with short labels as "button".',
+  '- If the reference is too vague to place regions at all, omit',
+  '  "reconstruction" entirely rather than inventing geometry.',
 ].join('\n');
 
 function parseImageDataUrl(dataUrl: string): { mediaType: string; data: string } | null {
@@ -263,6 +299,228 @@ function sanitizeContent(raw: unknown): GeneratedContent | undefined {
   return Object.keys(content).length > 0 ? content : undefined;
 }
 
+// ---------------------------------------------------------------------------
+// Image → reconstruction-plan sanitizer
+//
+// The model proposes a region tree; nothing it returns is trusted. Every
+// field is validated/clamped here into the same reconstruction-plan v2 schema
+// the Figma path produces, so the downstream renderer contract is identical
+// for both intake paths. Exported for unit tests (tests/analyzeReconstruction
+// .test.ts), matching the isAllowedFigmaPreviewHost precedent.
+// ---------------------------------------------------------------------------
+
+const RECONSTRUCTION_ELEMENTS: readonly ReconstructionElement[] = [
+  'section',
+  'group',
+  'card',
+  'text',
+  'media',
+  'button',
+  'link',
+  'input',
+];
+const IMAGE_PLAN_WIDTH = 1440;
+const MAX_IMAGE_PAGE_HEIGHT = 40_000;
+const MAX_IMAGE_REGIONS = 48;
+const MAX_IMAGE_REGION_DEPTH = 3; // page root + two authored levels
+
+interface ImageRegionContext {
+  headingCount: number;
+  index: number;
+  remaining: number;
+}
+
+export function sanitizeReconstruction(
+  raw: unknown,
+  referenceName = 'Uploaded reference',
+): ReconstructionPlan | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const candidate = raw as Record<string, unknown>;
+  const pageHeight = clampNumber(candidate.pageHeight, 200, MAX_IMAGE_PAGE_HEIGHT);
+  if (pageHeight === undefined || !Array.isArray(candidate.regions)) return undefined;
+
+  const context: ImageRegionContext = { headingCount: 0, index: 0, remaining: MAX_IMAGE_REGIONS };
+  const children: ReconstructionRegion[] = [];
+  for (const entry of candidate.regions) {
+    if (context.remaining <= 0) break;
+    const region = sanitizeImageRegion(entry, context, 1, pageHeight);
+    if (region) children.push(region);
+  }
+  if (children.length === 0) return undefined;
+
+  const reviewRequired: string[] = [];
+  let confidenceSum = 0;
+  let confidenceCount = 0;
+  (function walk(regions: ReconstructionRegion[]): void {
+    for (const region of regions) {
+      confidenceSum += region.evidence.confidence;
+      confidenceCount += 1;
+      // Media has no source asset to materialize from a flat image, and
+      // low-confidence guesses need human review before they are trusted.
+      if (region.element === 'media' || region.evidence.confidence < 0.5) {
+        reviewRequired.push(region.id);
+      }
+      walk(region.children);
+    }
+  })(children);
+  const overall = Math.round((confidenceSum / confidenceCount) * 100) / 100;
+
+  return {
+    schemaVersion: 'figma-to-vue.reconstruction-plan.v2',
+    source: { kind: 'image', name: referenceName.slice(0, 160) },
+    viewport: { width: IMAGE_PLAN_WIDTH, height: pageHeight },
+    regions: [
+      {
+        id: 'image-page',
+        name: 'Page',
+        element: 'page',
+        tag: 'main',
+        bounds: { x: 0, y: 0, width: IMAGE_PLAN_WIDTH, height: pageHeight },
+        layout: { mode: 'free' },
+        evidence: { source: 'image', confidence: overall },
+        children,
+        metadata: { sourceType: 'IMAGE_INFERENCE' },
+      },
+    ],
+    confidence: { overall, reviewRequired },
+    overrides: {},
+  };
+}
+
+function sanitizeImageRegion(
+  entry: unknown,
+  context: ImageRegionContext,
+  depth: number,
+  pageHeight: number,
+): ReconstructionRegion | undefined {
+  if (typeof entry !== 'object' || entry === null) return undefined;
+  const candidate = entry as Record<string, unknown>;
+
+  const x = clampNumber(candidate.x, 0, IMAGE_PLAN_WIDTH);
+  const y = clampNumber(candidate.y, 0, pageHeight);
+  const width = clampNumber(candidate.width, 1, IMAGE_PLAN_WIDTH);
+  const height = clampNumber(candidate.height, 1, pageHeight);
+  if (x === undefined || y === undefined || width === undefined || height === undefined) {
+    return undefined;
+  }
+
+  context.remaining -= 1;
+  context.index += 1;
+  const id = `image-${context.index}`;
+  const element: ReconstructionElement =
+    typeof candidate.element === 'string'
+    && RECONSTRUCTION_ELEMENTS.includes(candidate.element as ReconstructionElement)
+      ? (candidate.element as ReconstructionElement)
+      : 'group';
+
+  const children: ReconstructionRegion[] = [];
+  if (depth < MAX_IMAGE_REGION_DEPTH && element !== 'media' && Array.isArray(candidate.children)) {
+    for (const childEntry of candidate.children) {
+      if (context.remaining <= 0) break;
+      const child = sanitizeImageRegion(childEntry, context, depth + 1, pageHeight);
+      if (child) children.push(child);
+    }
+  }
+
+  const text = typeof candidate.text === 'string' && candidate.text.trim()
+    ? candidate.text.trim().slice(0, 600)
+    : undefined;
+  const fontSize = clampNumber(candidate.fontSize, 6, 200);
+  const name = (typeof candidate.name === 'string' && candidate.name.trim()
+    ? candidate.name.trim()
+    : element
+  ).slice(0, 120);
+  const confidence = clampNumber(candidate.confidence, 0, 1) ?? 0.6;
+  const tag = inferImageTag(element, fontSize, context);
+
+  const style: ReconstructionStyle = {
+    ...(hexColor(candidate.background) && element !== 'text'
+      ? { background: hexColor(candidate.background) }
+      : {}),
+    ...(hexColor(candidate.color) ? { color: hexColor(candidate.color) } : {}),
+    ...(fontSize !== undefined && ['text', 'button', 'link'].includes(element)
+      ? { fontSize }
+      : {}),
+    ...(fontWeightValue(candidate.fontWeight) && ['text', 'button', 'link'].includes(element)
+      ? { fontWeight: fontWeightValue(candidate.fontWeight) }
+      : {}),
+  };
+
+  const region: ReconstructionRegion = {
+    id,
+    name,
+    element,
+    tag,
+    evidence: { source: 'image', confidence },
+    children,
+    bounds: { x, y, width, height },
+    ...(children.length > 0 ? { layout: { mode: 'free' as const } } : {}),
+    ...(text && element === 'text' ? { text } : {}),
+    ...(Object.keys(style).length > 0 ? { style } : {}),
+    metadata: { sourceType: 'IMAGE_INFERENCE' },
+  };
+
+  if (element === 'button' || element === 'link') {
+    region.control = { type: element, label: (text ?? name).slice(0, 160) };
+    if (text && children.length === 0) region.text = text;
+  }
+  if (element === 'input') {
+    region.control = {
+      type: 'text',
+      label: name.slice(0, 160),
+      ...(text ? { placeholder: text.slice(0, 160) } : {}),
+    };
+  }
+  if (element === 'media') {
+    region.asset = {
+      kind: 'image',
+      sourceNodeId: region.id,
+      url: null,
+      alt: name,
+      delivery: 'missing',
+    };
+  }
+
+  return region;
+}
+
+function inferImageTag(
+  element: ReconstructionElement,
+  fontSize: number | undefined,
+  context: ImageRegionContext,
+): ReconstructionTag {
+  if (element === 'button') return 'button';
+  if (element === 'link') return 'a';
+  if (element === 'input') return 'input';
+  if (element === 'media') return 'img';
+  if (element === 'section') return 'section';
+  if (element === 'card') return 'article';
+  if (element !== 'text') return 'div';
+  if (fontSize !== undefined && fontSize >= 36) {
+    context.headingCount += 1;
+    return context.headingCount === 1 ? 'h1' : 'h2';
+  }
+  if (fontSize !== undefined && fontSize >= 22) return 'h2';
+  return 'p';
+}
+
+function clampNumber(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.min(max, Math.max(min, Math.round(value * 100) / 100));
+}
+
+function hexColor(value: unknown): string | undefined {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value.trim())
+    ? value.trim().toLowerCase()
+    : undefined;
+}
+
+function fontWeightValue(value: unknown): number | undefined {
+  return typeof value === 'number' && [300, 400, 500, 600, 700, 800].includes(value)
+    ? value
+    : undefined;
+}
+
 function extractJsonText(text: string): unknown {
   const trimmed = text.trim();
   const start = trimmed.indexOf('{');
@@ -280,6 +538,7 @@ function extractJsonText(text: string): unknown {
 interface ProviderResult {
   analysis: Partial<ReferenceAnalysis>;
   content?: GeneratedContent;
+  reconstruction?: ReconstructionPlan;
 }
 
 async function callVisionProvider(imageDataUrl: string): Promise<ProviderResult> {
@@ -291,7 +550,8 @@ async function callVisionProvider(imageDataUrl: string): Promise<ProviderResult>
   const client = new Anthropic();
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1536,
+    // Enough headroom for analysis + copy + a ~40-region reconstruction tree.
+    max_tokens: 4096,
     system: ANALYSIS_SYSTEM_PROMPT,
     messages: [
       {
@@ -317,14 +577,14 @@ async function callVisionProvider(imageDataUrl: string): Promise<ProviderResult>
   }
 
   const parsedJson = extractJsonText(textBlock.text);
-  const contentSource =
-    typeof parsedJson === 'object' && parsedJson !== null
-      ? (parsedJson as Record<string, unknown>).content
-      : undefined;
+  const record = typeof parsedJson === 'object' && parsedJson !== null
+    ? (parsedJson as Record<string, unknown>)
+    : undefined;
 
   return {
     analysis: sanitizeAnalysis(parsedJson),
-    content: sanitizeContent(contentSource),
+    content: sanitizeContent(record?.content),
+    reconstruction: sanitizeReconstruction(record?.reconstruction),
   };
 }
 
@@ -499,8 +759,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   try {
-    const { analysis, content } = await callVisionProvider(imageDataUrl);
-    const success: AnalyzeSuccessResponse = { ok: true, analysis, content };
+    const { analysis, content, reconstruction } = await callVisionProvider(imageDataUrl);
+    const success: AnalyzeSuccessResponse = { ok: true, analysis, content, reconstruction };
     respond(res, 200, success);
   } catch (error) {
     if (error instanceof Error && error.message === 'UNSUPPORTED_IMAGE') {
